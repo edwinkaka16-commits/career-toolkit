@@ -1,19 +1,155 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Career Toolkit</title>
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="text/babel" src="App.jsx"></script>
-    <script type="text/babel">
-      const root = ReactDOM.createRoot(document.getElementById('root'));
-      root.render(React.createElement(CareerToolkit));
-    </script>
-  </body>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Career Toolkit</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #080808; color: #e0e0e0; font-family: Georgia, serif; min-height: 100vh; }
+  .header { border-bottom: 1px solid #1a1a1a; padding: 24px; }
+  .header h1 { font-size: 28px; color: #f0f0f0; font-weight: 400; }
+  .header p { color: #555; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 6px; }
+  .tabs { border-bottom: 1px solid #1a1a1a; display: flex; padding: 0 24px; }
+  .tab { background: none; border: none; cursor: pointer; padding: 16px 24px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #555; border-bottom: 2px solid transparent; margin-bottom: -1px; font-family: monospace; }
+  .tab.active { color: #C8F04A; border-bottom-color: #C8F04A; }
+  .tab.active.job { color: #4AF0C8; border-bottom-color: #4AF0C8; }
+  .main { max-width: 720px; margin: 0 auto; padding: 36px 24px 64px; }
+  h2 { font-size: 24px; font-weight: 400; color: #f0f0f0; margin-bottom: 8px; }
+  .desc { color: #666; font-size: 14px; font-family: monospace; margin-bottom: 24px; }
+  textarea { width: 100%; background: #0d0d0d; border: 1px solid #2a2a2a; border-radius: 10px; color: #ccc; font-size: 14px; line-height: 1.7; padding: 16px; resize: vertical; font-family: monospace; outline: none; }
+  textarea:focus { border-color: #C8F04A; }
+  textarea.job:focus { border-color: #4AF0C8; }
+  .btn { margin-top: 16px; padding: 13px 28px; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; border: none; border-radius: 8px; cursor: pointer; font-family: monospace; background: #C8F04A; color: #000; }
+  .btn.job { background: #4AF0C8; }
+  .btn:disabled { background: #1a1a1a; color: #444; cursor: not-allowed; }
+  .output-box { margin-top: 24px; background: #111; border: 1px solid #2a2a2a; border-radius: 12px; overflow: hidden; }
+  .output-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #0a0a0a; border-bottom: 1px solid #1a1a1a; }
+  .output-label { font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; font-family: monospace; color: #C8F04A; }
+  .output-label.job { color: #4AF0C8; }
+  .copy-btn { background: transparent; color: #888; border: 1px solid #333; border-radius: 6px; padding: 4px 12px; font-size: 11px; cursor: pointer; font-family: monospace; }
+  .copy-btn:hover { background: #C8F04A; color: #000; border-color: #C8F04A; }
+  pre { padding: 20px; white-space: pre-wrap; word-break: break-word; color: #e0e0e0; font-size: 14px; line-height: 1.75; font-family: monospace; max-height: 460px; overflow-y: auto; }
+  .loading { text-align: center; padding: 48px 0; color: #666; font-family: monospace; font-size: 13px; letter-spacing: 0.1em; }
+  .error { color: #ff6b6b; margin-top: 16px; font-size: 14px; }
+  .divider { height: 1px; background: linear-gradient(to right, #C8F04A44, transparent); margin: 24px 0 0; }
+  .divider.job { background: linear-gradient(to right, #4AF0C844, transparent); }
+  .footer { margin-top: 48px; padding-top: 24px; border-top: 1px solid #1a1a1a; display: flex; justify-content: space-between; color: #333; font-size: 12px; font-family: monospace; }
+  #tool-review { display: block; }
+  #tool-job { display: none; }
+</style>
+</head>
+<body>
+<div class="header">
+  <p>AI-Powered</p>
+  <h1>Career Toolkit</h1>
+</div>
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('review')">TOOL 01 — Performance Review</button>
+  <button class="tab job" onclick="switchTab('job')" id="tab-job">TOOL 02 — Job Application</button>
+</div>
+<div class="main">
+  <!-- Performance Review Tool -->
+  <div id="tool-review">
+    <h2>Performance Review Writer</h2>
+    <p class="desc">Turn bullet points into a polished self-review</p>
+    <div class="divider"></div>
+    <br>
+    <label style="color:#888;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;font-family:monospace;">Your Work Highlights</label>
+    <br><br>
+    <textarea id="review-input" rows="10" placeholder="Paste your work highlights here. Be rough — bullet points are fine.
+
+Example:
+- Led migration of billing system, cut errors by 40%
+- Mentored 2 junior devs
+- Shipped 3 features ahead of schedule
+- Improved customer response time from 48h to 6h"></textarea>
+    <br>
+    <button class="btn" onclick="generate('review')">Write My Review</button>
+    <div id="review-loading" class="loading" style="display:none">Generating…</div>
+    <div id="review-error" class="error"></div>
+    <div id="review-output" class="output-box" style="display:none">
+      <div class="output-header">
+        <span class="output-label">Output</span>
+        <button class="copy-btn" onclick="copyOutput('review')">Copy</button>
+      </div>
+      <pre id="review-text"></pre>
+    </div>
+  </div>
+  <!-- Job Application Tool -->
+  <div id="tool-job">
+    <h2>Job Application Tailorer</h2>
+    <p class="desc">Paste a job description + your background → cover letter & resume summary</p>
+    <div class="divider job"></div>
+    <br>
+    <label style="color:#888;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;font-family:monospace;">Job Description + Your Background</label>
+    <br><br>
+    <textarea id="job-input" class="job" rows="10" placeholder="--- JOB DESCRIPTION ---
+[paste job description here]
+
+--- MY BACKGROUND ---
+[paste your resume summary or bullet points here]"></textarea>
+    <br>
+    <button class="btn job" onclick="generate('job')">Tailor My Application</button>
+    <div id="job-loading" class="loading" style="display:none">Generating…</div>
+    <div id="job-error" class="error"></div>
+    <div id="job-output" class="output-box" style="display:none">
+      <div class="output-header">
+        <span class="output-label job">Output</span>
+        <button class="copy-btn" onclick="copyOutput('job')">Copy</button>
+      </div>
+      <pre id="job-text"></pre>
+    </div>
+  </div>
+  <div class="footer">
+    <span>Career Toolkit v1.0</span>
+    <span>Powered by Claude AI</span>
+  </div>
+</div>
+<script>
+function switchTab(tool) {
+  document.getElementById('tool-review').style.display = tool === 'review' ? 'block' : 'none';
+  document.getElementById('tool-job').style.display = tool === 'job' ? 'block' : 'none';
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.remove('active'));
+  document.querySelectorAll('.tab')[tool === 'review' ? 0 : 1].classList.add('active');
+}
+
+const systemPrompts = {
+  review: `You are an expert career coach. Transform raw bullet points into a polished performance self-review. Write in first person, use strong action verbs, quantify impact where possible. Structure: Opening summary (2-3 sentences), Key Achievements (3-5 bullets), Leadership & Collaboration, Growth & Development, Looking Ahead. Tone: confident but human. Length: 300-450 words. Avoid buzzwords like "synergy" or "leverage".`,
+  job: `You are an expert career coach. Given a job description and someone's background, produce: 1) A tailored cover letter (250-300 words) that opens with a hook, connects their experience to the role, ends with a confident call to action. 2) A tailored resume summary (3-4 sentences) that mirrors the job description language and is ATS-optimized. Separate sections with clear headers.`
+};
+
+async function generate(tool) {
+  const input = document.getElementById(tool + '-input').value.trim();
+  if (!input) return;
+  document.getElementById(tool + '-loading').style.display = 'block';
+  document.getElementById(tool + '-output').style.display = 'none';
+  document.getElementById(tool + '-error').textContent = '';
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: systemPrompts[tool],
+        messages: [{ role: 'user', content: input }]
+      })
+    });
+    const data = await res.json();
+    const text = data.content?.map(b => b.text || '').join('\n') || 'No output returned.';
+    document.getElementById(tool + '-text').textContent = text;
+    document.getElementById(tool + '-output').style.display = 'block';
+  } catch(e) {
+    document.getElementById(tool + '-error').textContent = 'Something went wrong. Please try again.';
+  }
+  document.getElementById(tool + '-loading').style.display = 'none';
+}
+
+function copyOutput(tool) {
+  const text = document.getElementById(tool + '-text').textContent;
+  navigator.clipboard.writeText(text);
+}
+</script>
+</body>
 </html>
