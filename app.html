@@ -7,9 +7,12 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #080808; color: #e0e0e0; font-family: Georgia, serif; min-height: 100vh; }
-  .header { border-bottom: 1px solid #1a1a1a; padding: 24px; }
-  .header h1 { font-size: 28px; color: #f0f0f0; font-weight: 400; }
-  .header p { color: #555; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 6px; }
+  .header { border-bottom: 1px solid #1a1a1a; padding: 24px; display: flex; justify-content: space-between; align-items: center; }
+  .header-left h1 { font-size: 28px; color: #f0f0f0; font-weight: 400; }
+  .header-left p { color: #555; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 6px; }
+  .usage-pill { font-family: monospace; font-size: 11px; padding: 6px 14px; border-radius: 20px; border: 1px solid #2a2a2a; color: #888; background: #0d0d0d; cursor: default; }
+  .usage-pill.warning { border-color: #C8F04A44; color: #C8F04A; }
+  .usage-pill.paid { border-color: #4AF0C844; color: #4AF0C8; }
   .tabs { border-bottom: 1px solid #1a1a1a; display: flex; padding: 0 24px; }
   .tab { background: none; border: none; cursor: pointer; padding: 16px 24px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #555; border-bottom: 2px solid transparent; margin-bottom: -1px; font-family: monospace; }
   .tab.active { color: #C8F04A; border-bottom-color: #C8F04A; }
@@ -31,23 +34,269 @@
   .copy-btn:hover { background: #C8F04A; color: #000; border-color: #C8F04A; }
   pre { padding: 20px; white-space: pre-wrap; word-break: break-word; color: #e0e0e0; font-size: 14px; line-height: 1.75; font-family: monospace; max-height: 460px; overflow-y: auto; }
   .loading { text-align: center; padding: 48px 0; color: #666; font-family: monospace; font-size: 13px; letter-spacing: 0.1em; }
-  .error { color: #ff6b6b; margin-top: 16px; font-size: 14px; }
+  .error { color: #ff6b6b; margin-top: 16px; font-size: 14px; font-family: monospace; }
   .divider { height: 1px; background: linear-gradient(to right, #C8F04A44, transparent); margin: 24px 0 0; }
   .divider.job { background: linear-gradient(to right, #4AF0C844, transparent); }
-  .footer { margin-top: 48px; padding-top: 24px; border-top: 1px solid #1a1a1a; display: flex; justify-content: space-between; color: #333; font-size: 12px; font-family: monospace; }
+  .footer { margin-top: 48px; padding-top: 24px; border-top: 1px solid #1a1a1a; display: flex; justify-content: space-between; align-items: center; color: #333; font-size: 12px; font-family: monospace; }
+  .footer a { color: #555; text-decoration: none; font-size: 11px; border: 1px solid #222; padding: 5px 12px; border-radius: 6px; transition: all 0.2s; }
+  .footer a:hover { color: #C8F04A; border-color: #C8F04A44; }
   #tool-review { display: block; }
   #tool-job { display: none; }
+
+  /* ── PAYWALL OVERLAY ── */
+  #paywall-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.92);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    backdrop-filter: blur(6px);
+  }
+  #paywall-overlay.show { display: flex; }
+
+  .paywall-box {
+    background: #0d0d0d;
+    border: 1px solid #2a2a2a;
+    border-radius: 16px;
+    padding: 2.5rem 2rem;
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+    position: relative;
+  }
+
+  .paywall-box::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: 2rem; right: 2rem;
+    height: 2px;
+    background: linear-gradient(90deg, #C8F04A, #4AF0C8, #C8F04A);
+    border-radius: 0 0 2px 2px;
+  }
+
+  .paywall-icon { font-size: 2.5rem; margin-bottom: 1rem; }
+
+  .paywall-title {
+    font-size: 1.3rem;
+    color: #f0f0f0;
+    font-weight: 400;
+    margin-bottom: 0.5rem;
+  }
+
+  .paywall-sub {
+    font-size: 0.85rem;
+    color: #555;
+    font-family: monospace;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+  }
+
+  .paywall-price {
+    font-size: 2.5rem;
+    color: #C8F04A;
+    font-weight: 700;
+    font-family: monospace;
+    margin-bottom: 0.2rem;
+  }
+
+  .paywall-period {
+    font-size: 0.75rem;
+    color: #444;
+    font-family: monospace;
+    margin-bottom: 1.5rem;
+  }
+
+  .paywall-features {
+    list-style: none;
+    margin-bottom: 1.75rem;
+    text-align: left;
+    border: 1px solid #1a1a1a;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .paywall-features li {
+    font-size: 0.82rem;
+    color: #888;
+    font-family: monospace;
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid #1a1a1a;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .paywall-features li:last-child { border-bottom: none; }
+  .paywall-features li::before { content: '✓'; color: #C8F04A; }
+
+  .paywall-btn {
+    display: block;
+    width: 100%;
+    padding: 0.9rem;
+    background: #C8F04A;
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    font-family: monospace;
+    font-size: 0.88rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+    margin-bottom: 0.75rem;
+  }
+
+  .paywall-btn:hover { background: #d4f55e; transform: translateY(-1px); }
+
+  .paywall-dismiss {
+    font-size: 0.75rem;
+    color: #333;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-family: monospace;
+    text-decoration: underline;
+  }
+
+  .paywall-dismiss:hover { color: #555; }
+
+  /* ── ACCESS GATE (password entry on app page) ── */
+  #access-gate {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #080808;
+    z-index: 8888;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+  #access-gate.show { display: flex; }
+
+  .gate-box {
+    background: #0d0d0d;
+    border: 1px solid #2a2a2a;
+    border-radius: 16px;
+    padding: 2.5rem 2rem;
+    max-width: 380px;
+    width: 100%;
+    text-align: center;
+    position: relative;
+  }
+
+  .gate-box::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: 2rem; right: 2rem;
+    height: 2px;
+    background: linear-gradient(90deg, #C8F04A, #4AF0C8);
+  }
+
+  .gate-logo { font-size: 1.2rem; color: #f0f0f0; margin-bottom: 0.3rem; }
+  .gate-logo span { color: #C8F04A; }
+  .gate-sub { font-size: 0.75rem; color: #444; font-family: monospace; margin-bottom: 1.5rem; letter-spacing: 0.1em; }
+
+  .gate-divider { height: 1px; background: #1a1a1a; margin-bottom: 1.5rem; }
+
+  .gate-label { display: block; font-size: 0.7rem; color: #555; font-family: monospace; letter-spacing: 0.1em; text-transform: uppercase; text-align: left; margin-bottom: 0.5rem; }
+
+  .gate-input {
+    width: 100%;
+    background: #080808;
+    border: 1px solid #2a2a2a;
+    border-radius: 8px;
+    color: #ccc;
+    font-family: monospace;
+    font-size: 0.9rem;
+    padding: 0.8rem 1rem;
+    outline: none;
+    margin-bottom: 0.75rem;
+    transition: border-color 0.2s;
+  }
+
+  .gate-input:focus { border-color: #C8F04A; }
+  .gate-input.error { border-color: #ff6b6b; }
+
+  .gate-error { font-size: 0.75rem; color: #ff6b6b; font-family: monospace; margin-bottom: 0.75rem; display: none; text-align: left; }
+  .gate-error.show { display: block; }
+
+  .gate-btn {
+    width: 100%;
+    padding: 0.85rem;
+    background: #C8F04A;
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    font-family: monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    margin-bottom: 0.75rem;
+    transition: background 0.2s;
+  }
+
+  .gate-btn:hover { background: #d4f55e; }
+
+  .gate-note { font-size: 0.72rem; color: #333; font-family: monospace; line-height: 1.6; }
+  .gate-note a { color: #555; }
 </style>
 </head>
 <body>
-<div class="header">
-  <p>AI-Powered</p>
-  <h1>Career Toolkit</h1>
+
+<!-- ── ACCESS GATE (shown if came directly without password) ── -->
+<div id="access-gate">
+  <div class="gate-box">
+    <div class="gate-logo">Career<span>Toolkit</span></div>
+    <div class="gate-sub">Enter your access password</div>
+    <div class="gate-divider"></div>
+    <label class="gate-label">Password</label>
+    <input type="password" class="gate-input" id="gate-pw" placeholder="Your access password" onkeydown="if(event.key==='Enter')verifyGate()" />
+    <div class="gate-error" id="gate-error">Wrong password. Check your purchase email.</div>
+    <button class="gate-btn" onclick="verifyGate()">Unlock Access →</button>
+    <p class="gate-note">Don't have a password? <a href="index.html#pricing">Get lifetime access for $19 →</a></p>
+  </div>
 </div>
+
+<!-- ── PAYWALL MODAL ── -->
+<div id="paywall-overlay">
+  <div class="paywall-box">
+    <div class="paywall-icon">⚡</div>
+    <div class="paywall-title">You've used your 3 free generations</div>
+    <div class="paywall-sub">Unlock unlimited access with a one-time payment. No subscription, no renewals.</div>
+    <div class="paywall-price">$19</div>
+    <div class="paywall-period">One-time payment · Lifetime access</div>
+    <ul class="paywall-features">
+      <li>Unlimited performance reviews</li>
+      <li>Unlimited job applications</li>
+      <li>All future tool updates</li>
+      <li>Powered by Claude AI</li>
+    </ul>
+    <a href="YOUR_SELAR_LINK_HERE" target="_blank" class="paywall-btn">Get Lifetime Access →</a>
+    <button class="paywall-dismiss" onclick="document.getElementById('paywall-overlay').classList.remove('show')">Maybe later</button>
+  </div>
+</div>
+
+<!-- ── HEADER ── -->
+<div class="header">
+  <div class="header-left">
+    <p>AI-Powered</p>
+    <h1>Career Toolkit</h1>
+  </div>
+  <div id="usage-pill" class="usage-pill">3 free uses left</div>
+</div>
+
 <div class="tabs">
   <button class="tab active" onclick="switchTab('review')">TOOL 01 — Performance Review</button>
   <button class="tab job" onclick="switchTab('job')" id="tab-job">TOOL 02 — Job Application</button>
 </div>
+
 <div class="main">
   <div id="tool-review">
     <h2>Performance Review Writer</h2>
@@ -62,7 +311,7 @@ Example:
 - Shipped 3 features ahead of schedule
 - Improved customer response time from 48h to 6h"></textarea>
     <br>
-    <button class="btn" onclick="generate('review')">Write My Review</button>
+    <button class="btn" id="btn-review" onclick="generate('review')">Write My Review</button>
     <div id="review-loading" class="loading" style="display:none">Generating…</div>
     <div id="review-error" class="error"></div>
     <div id="review-output" class="output-box" style="display:none">
@@ -73,6 +322,7 @@ Example:
       <pre id="review-text"></pre>
     </div>
   </div>
+
   <div id="tool-job">
     <h2>Job Application Tailorer</h2>
     <p class="desc">Paste a job description + your background → cover letter & resume summary</p>
@@ -84,7 +334,7 @@ Example:
 --- MY BACKGROUND ---
 [paste your resume summary or bullet points here]"></textarea>
     <br>
-    <button class="btn job" onclick="generate('job')">Tailor My Application</button>
+    <button class="btn job" id="btn-job" onclick="generate('job')">Tailor My Application</button>
     <div id="job-loading" class="loading" style="display:none">Generating…</div>
     <div id="job-error" class="error"></div>
     <div id="job-output" class="output-box" style="display:none">
@@ -95,52 +345,150 @@ Example:
       <pre id="job-text"></pre>
     </div>
   </div>
+
   <div class="footer">
-    <span>Career Toolkit v1.0</span>
-    <span>Powered by Claude AI</span>
+    <span>Career Toolkit v1.0 · Powered by Claude AI</span>
+    <a href="index.html#pricing">Upgrade to Lifetime →</a>
   </div>
 </div>
+
 <script>
-function switchTab(tool) {
-  document.getElementById('tool-review').style.display = tool === 'review' ? 'block' : 'none';
-  document.getElementById('tool-job').style.display = tool === 'job' ? 'block' : 'none';
-  document.querySelectorAll('.tab').forEach((t, i) => t.classList.remove('active'));
-  document.querySelectorAll('.tab')[tool === 'review' ? 0 : 1].classList.add('active');
-}
-const systemPrompts = {
-  review: `You are an expert career coach. Transform raw bullet points into a polished performance self-review. Write in first person, use strong action verbs, quantify impact where possible. Structure: Opening summary (2-3 sentences), Key Achievements (3-5 bullets), Leadership & Collaboration, Growth & Development, Looking Ahead. Tone: confident but human. Length: 300-450 words. Avoid buzzwords like "synergy" or "leverage".`,
-  job: `You are an expert career coach. Given a job description and someone's background, produce: 1) A tailored cover letter (250-300 words) that opens with a hook, connects their experience to the role, ends with a confident call to action. 2) A tailored resume summary (3-4 sentences) that mirrors the job description language and is ATS-optimized. Separate sections with clear headers.`
-};
-async function generate(tool) {
-  const input = document.getElementById(tool + '-input').value.trim();
-  if (!input) return;
-  document.getElementById(tool + '-loading').style.display = 'block';
-  document.getElementById(tool + '-output').style.display = 'none';
-  document.getElementById(tool + '-error').textContent = '';
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        system: systemPrompts[tool],
-        messages: [{ role: 'user', content: input }]
-      })
-    });
-    const data = await res.json();
-    const text = data.content?.map(b => b.text || '').join('\n') || 'No output returned.';
-    document.getElementById(tool + '-text').textContent = text;
-    document.getElementById(tool + '-output').style.display = 'block';
-  } catch(e) {
-    document.getElementById(tool + '-error').textContent = 'Something went wrong. Please try again.';
+  // ── CONFIG ── change these to match index.html
+  const PAID_PASSWORD = 'CAREER2026PRO';
+  const FREE_LIMIT = 3;
+  const SELAR_LINK = 'YOUR_SELAR_LINK_HERE';
+
+  // ── STATE ──
+  let isPaid = localStorage.getItem('ct_paid') === '1';
+  let freeUsesLeft = parseInt(localStorage.getItem('ct_free_uses') ?? FREE_LIMIT);
+  let accessMode = null; // 'paid' | 'free' | null
+
+  // ── ON LOAD: check access ──
+  window.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get('mode'); // ?mode=free or ?mode=paid
+
+    if (isPaid) {
+      accessMode = 'paid';
+      initApp();
+    } else if (mode === 'free') {
+      accessMode = 'free';
+      initApp();
+    } else if (mode === 'paid') {
+      // came from "I Have Access" flow — show password gate
+      document.getElementById('access-gate').classList.add('show');
+    } else {
+      // direct URL — show gate
+      document.getElementById('access-gate').classList.add('show');
+    }
+  });
+
+  function verifyGate() {
+    const val = document.getElementById('gate-pw').value.trim();
+    const input = document.getElementById('gate-pw');
+    const err = document.getElementById('gate-error');
+    if (val === PAID_PASSWORD) {
+      isPaid = true;
+      localStorage.setItem('ct_paid', '1');
+      accessMode = 'paid';
+      input.classList.remove('error');
+      err.classList.remove('show');
+      document.getElementById('access-gate').classList.remove('show');
+      initApp();
+    } else {
+      input.classList.add('error');
+      err.classList.add('show');
+    }
   }
-  document.getElementById(tool + '-loading').style.display = 'none';
-}
-function copyOutput(tool) {
-  const text = document.getElementById(tool + '-text').textContent;
-  navigator.clipboard.writeText(text);
-}
+
+  function initApp() {
+    updateUsagePill();
+  }
+
+  function updateUsagePill() {
+    const pill = document.getElementById('usage-pill');
+    if (isPaid) {
+      pill.textContent = '✓ Unlimited Access';
+      pill.className = 'usage-pill paid';
+    } else {
+      pill.textContent = freeUsesLeft + ' free use' + (freeUsesLeft !== 1 ? 's' : '') + ' left';
+      pill.className = freeUsesLeft <= 1 ? 'usage-pill warning' : 'usage-pill';
+    }
+  }
+
+  function canGenerate() {
+    if (isPaid) return true;
+    if (freeUsesLeft <= 0) {
+      document.getElementById('paywall-overlay').classList.add('show');
+      return false;
+    }
+    return true;
+  }
+
+  function consumeUse() {
+    if (isPaid) return;
+    freeUsesLeft--;
+    localStorage.setItem('ct_free_uses', freeUsesLeft);
+    updateUsagePill();
+    if (freeUsesLeft <= 0) {
+      setTimeout(() => document.getElementById('paywall-overlay').classList.add('show'), 1200);
+    }
+  }
+
+  // ── TAB SWITCH ──
+  function switchTab(tool) {
+    document.getElementById('tool-review').style.display = tool === 'review' ? 'block' : 'none';
+    document.getElementById('tool-job').style.display = tool === 'job' ? 'block' : 'none';
+    document.querySelectorAll('.tab').forEach((t, i) => t.classList.remove('active'));
+    document.querySelectorAll('.tab')[tool === 'review' ? 0 : 1].classList.add('active');
+  }
+
+  // ── SYSTEM PROMPTS ──
+  const systemPrompts = {
+    review: `You are an expert career coach. Transform raw bullet points into a polished performance self-review. Write in first person, use strong action verbs, quantify impact where possible. Structure: Opening summary (2-3 sentences), Key Achievements (3-5 bullets), Leadership & Collaboration, Growth & Development, Looking Ahead. Tone: confident but human. Length: 300-450 words. Avoid buzzwords like "synergy" or "leverage".`,
+    job: `You are an expert career coach. Given a job description and someone's background, produce: 1) A tailored cover letter (250-300 words) that opens with a hook, connects their experience to the role, ends with a confident call to action. 2) A tailored resume summary (3-4 sentences) that mirrors the job description language and is ATS-optimized. Separate sections with clear headers.`
+  };
+
+  // ── GENERATE ──
+  async function generate(tool) {
+    if (!canGenerate()) return;
+
+    const input = document.getElementById(tool + '-input').value.trim();
+    if (!input) return;
+
+    document.getElementById(tool + '-loading').style.display = 'block';
+    document.getElementById(tool + '-output').style.display = 'none';
+    document.getElementById(tool + '-error').textContent = '';
+    document.getElementById('btn-' + tool).disabled = true;
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          system: systemPrompts[tool],
+          messages: [{ role: 'user', content: input }]
+        })
+      });
+      const data = await res.json();
+      const text = data.content?.map(b => b.text || '').join('\n') || 'No output returned.';
+      document.getElementById(tool + '-text').textContent = text;
+      document.getElementById(tool + '-output').style.display = 'block';
+      consumeUse();
+    } catch(e) {
+      document.getElementById(tool + '-error').textContent = 'Something went wrong. Please try again.';
+    }
+
+    document.getElementById(tool + '-loading').style.display = 'none';
+    document.getElementById('btn-' + tool).disabled = false;
+  }
+
+  function copyOutput(tool) {
+    const text = document.getElementById(tool + '-text').textContent;
+    navigator.clipboard.writeText(text);
+  }
 </script>
 </body>
 </html>
