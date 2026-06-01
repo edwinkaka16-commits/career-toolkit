@@ -1,505 +1,1363 @@
-import { useState, useEffect } from "react";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Career Toolkit — AI-Powered Career Tools</title>
+  <meta name="description" content="Write flawless performance reviews and job applications in minutes. Powered by Claude AI. One-time payment, lifetime access." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-// ── ROUTING (hash-based, no extra packages needed) ──────────────────────────
-function useRoute() {
-  const [route, setRoute] = useState(window.location.hash || "#/");
-  useEffect(() => {
-    const handler = () => setRoute(window.location.hash || "#/");
-    window.addEventListener("hashchange", handler);
-    return () => window.removeEventListener("hashchange", handler);
-  }, []);
-  return route;
-}
+    :root {
+      --ink: #0e0e0e;
+      --paper: #f5f0e8;
+      --cream: #ede8da;
+      --gold: #c9a84c;
+      --gold-light: #e8c96a;
+      --rust: #b84c2a;
+      --sage: #4a6741;
+      --mid: #6b6257;
+      --border: #d4ccbc;
+      --white: #ffffff;
+    }
 
-function navigate(path) {
-  window.location.hash = path;
-  window.scrollTo(0, 0);
-}
+    html { scroll-behavior: smooth; }
 
-// ── TOOL DATA ────────────────────────────────────────────────────────────────
-const TOOLS = {
-  review: {
-    id: "review",
-    label: "Performance Review",
-    tag: "TOOL 01",
-    title: "Performance Review Writer",
-    description: "Turn bullet points into a polished self-review",
-    placeholder: `Paste your work highlights here. Be rough — bullet points are fine.\n\nExample:\n- Led migration of billing system, cut errors by 40%\n- Mentored 2 junior devs\n- Shipped 3 features ahead of schedule\n- Improved customer response time from 48h to 6h`,
-    inputLabel: "Your Work Highlights",
-    buttonText: "Write My Review",
-    accent: "#C8F04A",
-  },
-  job: {
-    id: "job",
-    label: "Job Application",
-    tag: "TOOL 02",
-    title: "Job Application Tailorer",
-    description: "Paste a job description + your background → cover letter & resume summary",
-    placeholder: `Paste the job description AND your background below.\n\n--- JOB DESCRIPTION ---\n[paste job description here]\n\n--- MY BACKGROUND ---\n[paste your resume summary, experience, or bullet points here]`,
-    inputLabel: "Job Description + Your Background",
-    buttonText: "Tailor My Application",
-    accent: "#4AF0C8",
-  },
-};
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      overflow-x: hidden;
+    }
 
-const systemPrompts = {
-  review: `You are an expert career coach and professional writer. Your job is to take raw bullet points about someone's work and transform them into a polished, compelling performance self-review.
+    /* ── NOISE TEXTURE OVERLAY ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 999;
+      opacity: 0.4;
+    }
 
-Guidelines:
-- Write in first person
-- Use strong action verbs
-- Quantify impact wherever possible (infer reasonable metrics if not provided)
-- Structure: Opening summary (2-3 sentences), Key Achievements (3-5 bullets with context), Leadership & Collaboration, Growth & Development, Looking Ahead (1 paragraph)
-- Tone: Confident but not arrogant. Professional but human.
-- Length: 300-450 words
-- Do NOT use hollow corporate buzzwords like "synergy", "leverage", "pivot"`,
+    /* ── NAV ── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.25rem 4rem;
+      background: rgba(245, 240, 232, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
 
-  job: `You are an expert career coach and professional writer. Your job is to take a job description and someone's background and produce two things:
+    .nav-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: var(--ink);
+      text-decoration: none;
+    }
 
-1. A tailored cover letter (250-300 words) that:
-   - Opens with a hook, not "I am applying for..."
-   - Connects their specific experience to the role's key needs
-   - Ends with a confident call to action
+    .nav-logo span { color: var(--gold); }
 
-2. A tailored resume summary (3-4 sentences) that:
-   - Mirrors language from the job description
-   - Leads with their strongest relevant credential
-   - Is optimized for ATS keyword matching
+    nav ul {
+      list-style: none;
+      display: flex;
+      gap: 2.5rem;
+      align-items: center;
+    }
 
-Separate the two sections with a clear header. Be specific, not generic.`,
-};
+    nav ul a {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--mid);
+      text-decoration: none;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
 
-// ── SHARED STYLES ────────────────────────────────────────────────────────────
-const GLOBAL_STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-  html { scroll-behavior: smooth; }
-  body { background: #080808; }
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: #111; }
-  ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
-`;
+    nav ul a:hover { color: var(--ink); }
 
-// ── TOOL COMPONENTS ──────────────────────────────────────────────────────────
-function Spinner({ accent }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, padding: "48px 0" }}>
-      <div style={{ width: 40, height: 40, border: "3px solid #2a2a2a", borderTopColor: accent, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-      <span style={{ color: "#666", fontSize: 13, letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "'DM Mono', monospace" }}>Generating…</span>
-    </div>
-  );
-}
+    .nav-cta {
+      background: var(--ink) !important;
+      color: var(--paper) !important;
+      padding: 0.6rem 1.4rem !important;
+      border-radius: 2px !important;
+      letter-spacing: 0.04em !important;
+      transition: background 0.2s !important;
+    }
 
-function OutputBlock({ text, accent }) {
-  const [copied, setCopied] = useState(false);
-  const handleCopy = () => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); };
-  return (
-    <div style={{ marginTop: 24, background: "#111", border: `1px solid ${accent}33`, borderRadius: 12, overflow: "hidden" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: `1px solid ${accent}22`, background: "#0a0a0a" }}>
-        <span style={{ color: accent, fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", fontWeight: 600, fontFamily: "'DM Mono', monospace" }}>Output</span>
-        <button onClick={handleCopy} style={{ background: copied ? accent : "transparent", color: copied ? "#000" : "#888", border: `1px solid ${copied ? accent : "#333"}`, borderRadius: 6, padding: "4px 12px", fontSize: 11, cursor: "pointer", transition: "all 0.2s", fontFamily: "'DM Mono', monospace", letterSpacing: "0.05em" }}>
-          {copied ? "Copied!" : "Copy"}
-        </button>
+    .nav-cta:hover { background: var(--gold) !important; color: var(--ink) !important; }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      padding: 8rem 4rem 5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-bg-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(8rem, 18vw, 20rem);
+      font-weight: 900;
+      color: transparent;
+      -webkit-text-stroke: 1px rgba(201,168,76,0.12);
+      white-space: nowrap;
+      pointer-events: none;
+      user-select: none;
+      letter-spacing: -0.02em;
+    }
+
+    .hero-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5rem;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--cream);
+      border: 1px solid var(--border);
+      padding: 0.35rem 0.9rem;
+      border-radius: 2px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--mid);
+      margin-bottom: 1.5rem;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    .hero-badge::before {
+      content: '';
+      width: 6px; height: 6px;
+      background: var(--gold);
+      border-radius: 50%;
+    }
+
+    .hero-headline {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2.8rem, 5vw, 4.2rem);
+      font-weight: 900;
+      line-height: 1.08;
+      letter-spacing: -0.02em;
+      margin-bottom: 1.5rem;
+      animation: fadeUp 0.7s ease 0.1s both;
+    }
+
+    .hero-headline em {
+      font-style: italic;
+      color: var(--gold);
+    }
+
+    .hero-sub {
+      font-size: 1.05rem;
+      color: var(--mid);
+      line-height: 1.7;
+      max-width: 480px;
+      margin-bottom: 2.5rem;
+      font-weight: 300;
+      animation: fadeUp 0.7s ease 0.2s both;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+      animation: fadeUp 0.7s ease 0.3s both;
+    }
+
+    .btn-primary {
+      background: var(--ink);
+      color: var(--paper);
+      padding: 1rem 2.2rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-decoration: none;
+      border-radius: 2px;
+      transition: all 0.25s;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn-primary:hover {
+      background: var(--gold);
+      color: var(--ink);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(201,168,76,0.3);
+    }
+
+    .btn-secondary {
+      color: var(--ink);
+      font-size: 0.88rem;
+      font-weight: 500;
+      text-decoration: none;
+      letter-spacing: 0.03em;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: gap 0.2s;
+    }
+
+    .btn-secondary:hover { gap: 0.7rem; }
+
+    .hero-proof {
+      margin-top: 3rem;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      font-size: 0.82rem;
+      color: var(--mid);
+      animation: fadeUp 0.7s ease 0.4s both;
+    }
+
+    .hero-proof-divider {
+      width: 1px;
+      height: 24px;
+      background: var(--border);
+    }
+
+    .hero-proof strong { color: var(--ink); }
+
+    /* HERO CARD */
+    .hero-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2rem;
+      box-shadow: 0 20px 60px rgba(14,14,14,0.08), 0 4px 12px rgba(14,14,14,0.04);
+      animation: fadeUp 0.8s ease 0.2s both;
+      position: relative;
+    }
+
+    .hero-card::before {
+      content: '';
+      position: absolute;
+      top: -1px; left: 2rem; right: 2rem;
+      height: 3px;
+      background: linear-gradient(90deg, var(--gold), var(--gold-light), var(--gold));
+      border-radius: 0 0 2px 2px;
+    }
+
+    .card-label {
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 0.75rem;
+    }
+
+    .card-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: var(--ink);
+    }
+
+    .card-input-mock {
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 0.75rem 1rem;
+      font-size: 0.8rem;
+      color: var(--mid);
+      margin-bottom: 0.75rem;
+      line-height: 1.6;
+    }
+
+    .card-output-mock {
+      background: linear-gradient(135deg, #f0ece0, #e8e4d6);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 1rem;
+      font-size: 0.78rem;
+      color: var(--ink);
+      line-height: 1.7;
+      position: relative;
+    }
+
+    .card-output-mock::before {
+      content: '✦ AI Output';
+      display: block;
+      font-size: 0.65rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 0.5rem;
+    }
+
+    .card-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 1.25rem 0;
+    }
+
+    /* ── SECTION SHARED ── */
+    section { padding: 6rem 4rem; }
+
+    .section-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      max-width: 40px;
+      height: 1px;
+      background: var(--gold);
+      opacity: 0.5;
+    }
+
+    .section-headline {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2rem, 3.5vw, 3rem);
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      margin-bottom: 1.25rem;
+    }
+
+    .section-sub {
+      font-size: 1rem;
+      color: var(--mid);
+      line-height: 1.7;
+      font-weight: 300;
+      max-width: 560px;
+    }
+
+    /* ── TOOLS SECTION ── */
+    .tools-section { background: var(--cream); }
+
+    .tools-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-top: 3.5rem;
+    }
+
+    .tool-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2.5rem;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .tool-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 50px rgba(14,14,14,0.1);
+    }
+
+    .tool-card::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--gold), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .tool-card:hover::after { opacity: 1; }
+
+    .tool-number {
+      font-family: 'Playfair Display', serif;
+      font-size: 4rem;
+      font-weight: 900;
+      color: rgba(201,168,76,0.12);
+      line-height: 1;
+      position: absolute;
+      top: 1.5rem;
+      right: 2rem;
+    }
+
+    .tool-icon {
+      width: 44px; height: 44px;
+      background: var(--ink);
+      border-radius: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+      font-size: 1.2rem;
+    }
+
+    .tool-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+    }
+
+    .tool-desc {
+      font-size: 0.9rem;
+      color: var(--mid);
+      line-height: 1.7;
+      font-weight: 300;
+      margin-bottom: 1.5rem;
+    }
+
+    .tool-features {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .tool-features li {
+      font-size: 0.83rem;
+      color: var(--mid);
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+
+    .tool-features li::before {
+      content: '→';
+      color: var(--gold);
+      flex-shrink: 0;
+      margin-top: 0.05em;
+    }
+
+    /* ── HOW IT WORKS ── */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+      margin-top: 3.5rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .step {
+      padding: 2.5rem 2rem;
+      border-right: 1px solid var(--border);
+      position: relative;
+      transition: background 0.3s;
+    }
+
+    .step:last-child { border-right: none; }
+    .step:hover { background: var(--cream); }
+
+    .step-number {
+      font-family: 'Playfair Display', serif;
+      font-size: 3rem;
+      font-weight: 900;
+      color: var(--gold);
+      opacity: 0.3;
+      line-height: 1;
+      margin-bottom: 1rem;
+    }
+
+    .step-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+    }
+
+    .step-desc {
+      font-size: 0.85rem;
+      color: var(--mid);
+      line-height: 1.65;
+      font-weight: 300;
+    }
+
+    /* ── BEFORE/AFTER ── */
+    .compare-section { background: var(--ink); color: var(--paper); }
+
+    .compare-section .section-headline { color: var(--paper); }
+    .compare-section .section-sub { color: rgba(245,240,232,0.6); }
+    .compare-section .section-label { color: var(--gold-light); }
+    .compare-section .section-label::after { background: var(--gold-light); }
+
+    .compare-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-top: 3rem;
+    }
+
+    .compare-card {
+      border-radius: 4px;
+      padding: 2rem;
+    }
+
+    .compare-card.before {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .compare-card.after {
+      background: rgba(201,168,76,0.08);
+      border: 1px solid rgba(201,168,76,0.3);
+    }
+
+    .compare-label {
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .compare-card.before .compare-label { color: rgba(245,240,232,0.4); }
+    .compare-card.after .compare-label { color: var(--gold-light); }
+
+    .compare-text {
+      font-size: 0.9rem;
+      line-height: 1.75;
+      font-weight: 300;
+    }
+
+    .compare-card.before .compare-text { color: rgba(245,240,232,0.5); }
+    .compare-card.after .compare-text { color: rgba(245,240,232,0.85); }
+
+    /* ── PRICING ── */
+    .pricing-section { background: var(--paper); }
+
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.1fr 1fr;
+      gap: 1.5rem;
+      margin-top: 3.5rem;
+      align-items: start;
+    }
+
+    .pricing-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2rem;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .pricing-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 16px 40px rgba(14,14,14,0.08);
+    }
+
+    .pricing-card.featured {
+      background: var(--ink);
+      color: var(--paper);
+      border-color: var(--ink);
+      transform: scale(1.02);
+      box-shadow: 0 20px 50px rgba(14,14,14,0.2);
+    }
+
+    .pricing-card.featured:hover {
+      transform: scale(1.02) translateY(-4px);
+    }
+
+    .pricing-tag {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 0.3rem 0.7rem;
+      border-radius: 2px;
+      margin-bottom: 1.25rem;
+    }
+
+    .pricing-card:not(.featured) .pricing-tag {
+      background: var(--cream);
+      color: var(--mid);
+      border: 1px solid var(--border);
+    }
+
+    .pricing-card.featured .pricing-tag {
+      background: var(--gold);
+      color: var(--ink);
+    }
+
+    .pricing-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .pricing-price {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.8rem;
+      font-weight: 900;
+      line-height: 1;
+      margin-bottom: 0.25rem;
+      letter-spacing: -0.02em;
+    }
+
+    .pricing-card.featured .pricing-price { color: var(--gold); }
+
+    .pricing-period {
+      font-size: 0.8rem;
+      font-weight: 300;
+      margin-bottom: 1.5rem;
+    }
+
+    .pricing-card:not(.featured) .pricing-period { color: var(--mid); }
+    .pricing-card.featured .pricing-period { color: rgba(245,240,232,0.5); }
+
+    .pricing-divider {
+      height: 1px;
+      margin-bottom: 1.5rem;
+    }
+
+    .pricing-card:not(.featured) .pricing-divider { background: var(--border); }
+    .pricing-card.featured .pricing-divider { background: rgba(255,255,255,0.1); }
+
+    .pricing-features {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      margin-bottom: 2rem;
+    }
+
+    .pricing-features li {
+      font-size: 0.85rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      font-weight: 300;
+      line-height: 1.4;
+    }
+
+    .pricing-card:not(.featured) .pricing-features li { color: var(--mid); }
+    .pricing-card.featured .pricing-features li { color: rgba(245,240,232,0.75); }
+
+    .pricing-features li .check { color: var(--gold); font-size: 0.8rem; flex-shrink: 0; margin-top: 0.1em; }
+
+    .pricing-btn {
+      display: block;
+      text-align: center;
+      padding: 0.85rem;
+      border-radius: 2px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-decoration: none;
+      transition: all 0.25s;
+      cursor: pointer;
+      border: none;
+    }
+
+    .pricing-card:not(.featured) .pricing-btn {
+      background: var(--cream);
+      color: var(--ink);
+      border: 1px solid var(--border);
+    }
+
+    .pricing-card:not(.featured) .pricing-btn:hover {
+      background: var(--ink);
+      color: var(--paper);
+      border-color: var(--ink);
+    }
+
+    .pricing-card.featured .pricing-btn {
+      background: var(--gold);
+      color: var(--ink);
+    }
+
+    .pricing-card.featured .pricing-btn:hover {
+      background: var(--gold-light);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(201,168,76,0.4);
+    }
+
+    /* ── TESTIMONIALS ── */
+    .testimonials-section { background: var(--cream); }
+
+    .testimonials-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      margin-top: 3rem;
+    }
+
+    .testimonial-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2rem;
+      transition: transform 0.3s;
+    }
+
+    .testimonial-card:hover { transform: translateY(-3px); }
+
+    .testimonial-stars {
+      color: var(--gold);
+      font-size: 0.85rem;
+      letter-spacing: 0.1em;
+      margin-bottom: 1rem;
+    }
+
+    .testimonial-text {
+      font-size: 0.88rem;
+      line-height: 1.75;
+      color: var(--ink);
+      margin-bottom: 1.5rem;
+      font-weight: 300;
+      font-style: italic;
+    }
+
+    .testimonial-author {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .author-avatar {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--white);
+      flex-shrink: 0;
+    }
+
+    .author-name {
+      font-size: 0.82rem;
+      font-weight: 500;
+    }
+
+    .author-role {
+      font-size: 0.75rem;
+      color: var(--mid);
+      font-weight: 300;
+    }
+
+    /* ── FAQ ── */
+    .faq-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      margin-top: 3rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .faq-item {
+      padding: 2rem;
+      border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+    }
+
+    .faq-item:nth-child(2n) { border-right: none; }
+    .faq-item:nth-last-child(-n+2) { border-bottom: none; }
+
+    .faq-q {
+      font-family: 'Playfair Display', serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+    }
+
+    .faq-a {
+      font-size: 0.85rem;
+      color: var(--mid);
+      line-height: 1.7;
+      font-weight: 300;
+    }
+
+    /* ── CTA SECTION ── */
+    .cta-section {
+      background: var(--ink);
+      color: var(--paper);
+      text-align: center;
+      padding: 7rem 4rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta-section::before {
+      content: 'HIRED';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(8rem, 20vw, 22rem);
+      font-weight: 900;
+      color: transparent;
+      -webkit-text-stroke: 1px rgba(201,168,76,0.07);
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .cta-section .section-headline { color: var(--paper); font-size: clamp(2.2rem, 4vw, 3.5rem); }
+    .cta-section .section-sub { color: rgba(245,240,232,0.55); max-width: 480px; margin: 0 auto 2.5rem; }
+
+    .cta-actions {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-gold {
+      background: var(--gold);
+      color: var(--ink);
+      padding: 1rem 2.5rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-decoration: none;
+      border-radius: 2px;
+      transition: all 0.25s;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn-gold:hover {
+      background: var(--gold-light);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(201,168,76,0.4);
+    }
+
+    .btn-outline-light {
+      background: transparent;
+      color: rgba(245,240,232,0.7);
+      padding: 1rem 2.5rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-decoration: none;
+      border-radius: 2px;
+      border: 1px solid rgba(245,240,232,0.2);
+      transition: all 0.25s;
+    }
+
+    .btn-outline-light:hover {
+      color: var(--paper);
+      border-color: rgba(245,240,232,0.5);
+    }
+
+    .cta-guarantee {
+      margin-top: 2rem;
+      font-size: 0.8rem;
+      color: rgba(245,240,232,0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      background: #080808;
+      color: rgba(245,240,232,0.4);
+      padding: 3rem 4rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .footer-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 1rem;
+      font-weight: 700;
+      color: rgba(245,240,232,0.6);
+    }
+
+    .footer-logo span { color: var(--gold); }
+
+    .footer-links {
+      display: flex;
+      gap: 2rem;
+    }
+
+    .footer-links a {
+      font-size: 0.8rem;
+      color: rgba(245,240,232,0.35);
+      text-decoration: none;
+      letter-spacing: 0.04em;
+      transition: color 0.2s;
+    }
+
+    .footer-links a:hover { color: rgba(245,240,232,0.7); }
+
+    .footer-copy {
+      font-size: 0.75rem;
+      color: rgba(245,240,232,0.25);
+    }
+
+    /* ── TRUST BAR ── */
+    .trust-bar {
+      background: var(--cream);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 1.25rem 4rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3rem;
+      flex-wrap: wrap;
+    }
+
+    .trust-item {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.8rem;
+      color: var(--mid);
+      font-weight: 400;
+    }
+
+    .trust-item .icon {
+      font-size: 1rem;
+      color: var(--gold);
+    }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+      nav { padding: 1rem 1.5rem; }
+      nav ul { display: none; }
+      .hero { padding: 7rem 1.5rem 4rem; }
+      .hero-inner { grid-template-columns: 1fr; gap: 3rem; }
+      .hero-bg-text { font-size: 6rem; }
+      section { padding: 4rem 1.5rem; }
+      .tools-grid, .compare-grid, .pricing-grid, .steps-grid, .testimonials-grid { grid-template-columns: 1fr; }
+      .faq-grid { grid-template-columns: 1fr; }
+      .faq-item { border-right: none; }
+      .faq-item:last-child { border-bottom: none; }
+      .pricing-card.featured { transform: none; }
+      footer { flex-direction: column; gap: 1.5rem; text-align: center; padding: 2rem 1.5rem; }
+      .trust-bar { padding: 1.25rem 1.5rem; gap: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <a href="#" class="nav-logo">Career<span>Toolkit</span></a>
+    <ul>
+      <li><a href="#tools">Tools</a></li>
+      <li><a href="#how">How It Works</a></li>
+      <li><a href="#pricing">Pricing</a></li>
+      <li><a href="#faq">FAQ</a></li>
+      <li><a href="#pricing" class="nav-cta">Get Access →</a></li>
+    </ul>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-bg-text">CAREER</div>
+    <div class="hero-inner">
+      <div class="hero-content">
+        <div class="hero-badge">Powered by Claude AI</div>
+        <h1 class="hero-headline">
+          Write career docs that <em>actually</em> land the job
+        </h1>
+        <p class="hero-sub">
+          Stop staring at a blank page. Career Toolkit uses advanced AI to craft
+          polished performance reviews and tailored job applications — in under 60 seconds.
+        </p>
+        <div class="hero-actions">
+          <a href="#pricing" class="btn-primary">Get Lifetime Access — $19</a>
+          <a href="#tools" class="btn-secondary">See the tools →</a>
+        </div>
+        <div class="hero-proof">
+          <span><strong>2 tools</strong> in one suite</span>
+          <div class="hero-proof-divider"></div>
+          <span><strong>Claude AI</strong> — top-tier output</span>
+          <div class="hero-proof-divider"></div>
+          <span><strong>One-time</strong> payment</span>
+        </div>
       </div>
-      <pre style={{ padding: 20, margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word", color: "#e0e0e0", fontSize: 14, lineHeight: 1.75, fontFamily: "'DM Mono', monospace", maxHeight: 460, overflowY: "auto" }}>{text}</pre>
-    </div>
-  );
-}
 
-function Tool({ tool }) {
-  const [input, setInput] = useState("");
-  const [output, setOutput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const run = async () => {
-    if (!input.trim()) return;
-    setLoading(true); setOutput(""); setError("");
-    try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000, system: systemPrompts[tool.id], messages: [{ role: "user", content: input }] }),
-      });
-      const data = await res.json();
-      setOutput(data.content?.map(b => b.text || "").join("\n") || "No output returned.");
-    } catch { setError("Something went wrong. Please try again."); }
-    setLoading(false);
-  };
-
-  return (
-    <div style={{ padding: "32px 0" }}>
-      <div style={{ marginBottom: 20 }}>
-        <label style={{ display: "block", color: "#888", fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 10, fontFamily: "'DM Mono', monospace" }}>{tool.inputLabel}</label>
-        <textarea value={input} onChange={e => setInput(e.target.value)} placeholder={tool.placeholder} rows={10}
-          style={{ width: "100%", background: "#0d0d0d", border: "1px solid #2a2a2a", borderRadius: 10, color: "#ccc", fontSize: 14, lineHeight: 1.7, padding: 16, resize: "vertical", fontFamily: "'DM Mono', monospace", outline: "none", transition: "border-color 0.2s", boxSizing: "border-box" }}
-          onFocus={e => e.target.style.borderColor = tool.accent}
-          onBlur={e => e.target.style.borderColor = "#2a2a2a"} />
+      <div class="hero-card">
+        <div class="card-label">Performance Review Writer</div>
+        <div class="card-title">Your input</div>
+        <div class="card-input-mock">
+          • Led product launch that increased signups 40%<br />
+          • Mentored 2 junior devs<br />
+          • Reduced deployment time by 30%
+        </div>
+        <div style="text-align:center;padding:0.5rem 0;font-size:0.75rem;color:var(--mid);">↓ Claude AI transforms this into ↓</div>
+        <div class="card-output-mock">
+          This quarter, I drove measurable impact across delivery, growth, and team development.
+          I spearheaded a product launch that accelerated user signups by 40%, while simultaneously
+          reducing deployment cycles by 30% through process improvements. I also invested in team
+          capability by mentoring two junior engineers...
+        </div>
+        <div class="card-divider"></div>
+        <div class="card-label">Job Application Tailorer</div>
+        <div class="card-output-mock">
+          Cover letter and resume summary tailored to the exact role — keywords matched, tone aligned, ready to send.
+        </div>
       </div>
-      <button onClick={run} disabled={loading || !input.trim()}
-        style={{ background: input.trim() && !loading ? tool.accent : "#1a1a1a", color: input.trim() && !loading ? "#000" : "#444", border: "none", borderRadius: 8, padding: "13px 28px", fontSize: 13, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", cursor: input.trim() && !loading ? "pointer" : "not-allowed", transition: "all 0.2s", fontFamily: "'DM Mono', monospace" }}>
-        {loading ? "Working…" : tool.buttonText}
-      </button>
-      {loading && <Spinner accent={tool.accent} />}
-      {error && <p style={{ color: "#ff6b6b", marginTop: 16, fontSize: 14, fontFamily: "'DM Sans', sans-serif" }}>{error}</p>}
-      {output && !loading && <OutputBlock text={output} accent={tool.accent} />}
     </div>
-  );
-}
+  </section>
 
-// ── APP PAGE ─────────────────────────────────────────────────────────────────
-function AppPage() {
-  const [active, setActive] = useState("review");
-  const tool = TOOLS[active];
+  <!-- TRUST BAR -->
+  <div class="trust-bar">
+    <div class="trust-item"><span class="icon">✦</span> Claude AI — best-in-class language model</div>
+    <div class="trust-item"><span class="icon">🔒</span> Your data is never stored or sold</div>
+    <div class="trust-item"><span class="icon">⚡</span> Results in under 60 seconds</div>
+    <div class="trust-item"><span class="icon">♾️</span> Lifetime access, one-time payment</div>
+    <div class="trust-item"><span class="icon">✓</span> Works for any industry or role</div>
+  </div>
 
-  return (
-    <div style={{ minHeight: "100vh", background: "#080808", fontFamily: "'DM Sans', sans-serif", color: "#e0e0e0" }}>
-      {/* Header */}
-      <div style={{ borderBottom: "1px solid #1a1a1a", padding: "20px 0", animation: "fadeIn 0.6s ease both" }}>
-        <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <button onClick={() => navigate("#/")}
-              style={{ background: "none", border: "1px solid #2a2a2a", borderRadius: 6, color: "#555", fontSize: 11, fontFamily: "'DM Mono', monospace", letterSpacing: "0.08em", padding: "5px 12px", cursor: "pointer", transition: "all 0.2s", textTransform: "uppercase" }}
-              onMouseEnter={e => { e.target.style.borderColor = "#C8F04A"; e.target.style.color = "#C8F04A"; }}
-              onMouseLeave={e => { e.target.style.borderColor = "#2a2a2a"; e.target.style.color = "#555"; }}>
-              ← Home
-            </button>
+  <!-- TOOLS -->
+  <section class="tools-section" id="tools">
+    <div class="section-inner">
+      <div class="section-label">The Suite</div>
+      <h2 class="section-headline">Two tools.<br />Both career-changing.</h2>
+      <p class="section-sub">Each tool targets a moment that matters — when you're being evaluated, and when you're trying to get in the door.</p>
+
+      <div class="tools-grid">
+        <div class="tool-card reveal">
+          <div class="tool-number">01</div>
+          <div class="tool-icon">📋</div>
+          <div class="tool-name">Performance Review Writer</div>
+          <div class="tool-desc">
+            Turn raw bullet points into a polished, professional self-review.
+            Sounds like you — but the best version of you.
+          </div>
+          <ul class="tool-features">
+            <li>Converts rough notes into confident, structured narratives</li>
+            <li>Highlights impact with the right tone and vocabulary</li>
+            <li>Adaptable to any seniority level or industry</li>
+            <li>Saves 2–3 hours of painful writing per review cycle</li>
+          </ul>
+        </div>
+
+        <div class="tool-card reveal">
+          <div class="tool-number">02</div>
+          <div class="tool-icon">📄</div>
+          <div class="tool-name">Job Application Tailorer</div>
+          <div class="tool-desc">
+            Paste a job description and your background. Get a tailored cover letter
+            and resume summary that speaks the employer's language.
+          </div>
+          <ul class="tool-features">
+            <li>Matches your skills to the role's exact requirements</li>
+            <li>Generates a compelling cover letter — not a generic template</li>
+            <li>Resume summary optimized for ATS and human readers</li>
+            <li>Works for entry-level to executive applications</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how">
+    <div class="section-inner">
+      <div class="section-label">The Process</div>
+      <h2 class="section-headline">From blank page to<br />polished document</h2>
+      <p class="section-sub">No learning curve. No complicated settings. Three steps and you're done.</p>
+
+      <div class="steps-grid reveal">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-title">Paste your raw input</div>
+          <div class="step-desc">Drop in bullet points, rough notes, a job description, or anything you have. No formatting required.</div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-title">Claude AI processes it</div>
+          <div class="step-desc">Our integration with Claude — Anthropic's top-tier AI — transforms your input into professional, polished output in seconds.</div>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-title">Copy and use it</div>
+          <div class="step-desc">One click to copy. Paste into your review system, email, or document. Edit if you want — it's yours.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BEFORE / AFTER -->
+  <section class="compare-section">
+    <div class="section-inner">
+      <div class="section-label">The Difference</div>
+      <h2 class="section-headline">See what AI quality<br />actually looks like</h2>
+      <p class="section-sub">This is a real before/after from the Performance Review Writer. Same facts — completely different impact.</p>
+
+      <div class="compare-grid reveal">
+        <div class="compare-card before">
+          <div class="compare-label">✕ Without Career Toolkit</div>
+          <div class="compare-text">
+            "I did a good job this quarter. I helped with the product launch and it went well. 
+            I also helped some junior people on the team. I fixed some things to make deployments faster. 
+            I think I deserve a good rating."
+          </div>
+        </div>
+        <div class="compare-card after">
+          <div class="compare-label">✦ With Career Toolkit</div>
+          <div class="compare-text">
+            "This quarter, I drove measurable impact across three key areas. I led our flagship product launch, 
+            resulting in a 40% increase in new user signups. I invested in team capability by mentoring two 
+            junior engineers through their first production deployments. Additionally, I redesigned our CI/CD 
+            pipeline, reducing average deployment time by 30% and significantly improving team velocity."
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <section class="pricing-section" id="pricing">
+    <div class="section-inner">
+      <div class="section-label">Pricing</div>
+      <h2 class="section-headline">One price.<br />Lifetime access.</h2>
+      <p class="section-sub">No subscriptions. No monthly fees. Pay once, use it every review cycle and every job hunt — forever.</p>
+
+      <div class="pricing-grid">
+        <div class="pricing-card reveal">
+          <div class="pricing-tag">Free</div>
+          <div class="pricing-name">Try It</div>
+          <div class="pricing-price">$0</div>
+          <div class="pricing-period">No credit card required</div>
+          <div class="pricing-divider"></div>
+          <ul class="pricing-features">
+            <li><span class="check">✓</span> 3 uses per tool</li>
+            <li><span class="check">✓</span> Full AI quality</li>
+            <li><span class="check">✓</span> No signup needed</li>
+          </ul>
+          <a href="https://career-toolkit-brown.vercel.app/" class="pricing-btn">Try for Free</a>
+        </div>
+
+        <div class="pricing-card featured reveal">
+          <div class="pricing-tag">Most Popular</div>
+          <div class="pricing-name">Lifetime Access</div>
+          <div class="pricing-price">$19</div>
+          <div class="pricing-period">One-time payment · Use forever</div>
+          <div class="pricing-divider"></div>
+          <ul class="pricing-features">
+            <li><span class="check">✓</span> Unlimited performance reviews</li>
+            <li><span class="check">✓</span> Unlimited job applications</li>
+            <li><span class="check">✓</span> Both tools included</li>
+            <li><span class="check">✓</span> All future updates</li>
+            <li><span class="check">✓</span> Powered by Claude AI</li>
+            <li><span class="check">✓</span> Private & secure</li>
+          </ul>
+          <a href="#" class="pricing-btn">Get Lifetime Access →</a>
+        </div>
+
+        <div class="pricing-card reveal">
+          <div class="pricing-tag">Teams</div>
+          <div class="pricing-name">Team License</div>
+          <div class="pricing-price">$49</div>
+          <div class="pricing-period">One-time · Up to 5 seats</div>
+          <div class="pricing-divider"></div>
+          <ul class="pricing-features">
+            <li><span class="check">✓</span> Everything in Lifetime</li>
+            <li><span class="check">✓</span> 5 team members</li>
+            <li><span class="check">✓</span> Great for HR / managers</li>
+            <li><span class="check">✓</span> Priority support</li>
+          </ul>
+          <a href="#" class="pricing-btn">Get Team License</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TESTIMONIALS -->
+  <section class="testimonials-section">
+    <div class="section-inner">
+      <div class="section-label">Social Proof</div>
+      <h2 class="section-headline">People who stopped<br />dreading review season</h2>
+
+      <div class="testimonials-grid">
+        <div class="testimonial-card reveal">
+          <div class="testimonial-stars">★★★★★</div>
+          <div class="testimonial-text">"I used to spend an entire evening on my self-review. With Career Toolkit, I had a polished draft in 4 minutes. My manager actually asked me if I hired someone to write it."</div>
+          <div class="testimonial-author">
+            <div class="author-avatar" style="background:#4a6741;">MR</div>
             <div>
-              <div style={{ fontSize: 10, letterSpacing: "0.2em", color: "#444", textTransform: "uppercase", marginBottom: 4, fontFamily: "'DM Mono', monospace" }}>AI-Powered</div>
-              <h1 style={{ margin: 0, fontSize: "clamp(18px,3.5vw,26px)", fontFamily: "'Playfair Display', serif", fontWeight: 700, color: "#f0f0f0", letterSpacing: "-0.02em" }}>Career Toolkit</h1>
+              <div class="author-name">Marcus R.</div>
+              <div class="author-role">Senior Product Manager</div>
             </div>
           </div>
-          <div style={{ background: "#C8F04A", color: "#000", fontSize: 10, fontFamily: "'DM Mono', monospace", fontWeight: 500, letterSpacing: "0.1em", padding: "5px 10px", borderRadius: 4, textTransform: "uppercase" }}>2 Tools</div>
         </div>
-      </div>
 
-      {/* Tabs */}
-      <div style={{ borderBottom: "1px solid #1a1a1a" }}>
-        <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 24px", display: "flex" }}>
-          {Object.values(TOOLS).map(t => (
-            <button key={t.id} onClick={() => setActive(t.id)}
-              style={{ background: "none", border: "none", cursor: "pointer", padding: "16px 24px 14px", fontFamily: "'DM Mono', monospace", fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: active === t.id ? t.accent : "#555", borderBottom: active === t.id ? `2px solid ${t.accent}` : "2px solid transparent", transition: "all 0.2s", marginBottom: -1 }}>
-              <span style={{ color: active === t.id ? t.accent + "88" : "#333", marginRight: 8, fontSize: 10 }}>{t.tag}</span>{t.label}
-            </button>
-          ))}
+        <div class="testimonial-card reveal">
+          <div class="testimonial-stars">★★★★★</div>
+          <div class="testimonial-text">"The job application tool is insane. I applied to 12 roles and got 7 interview callbacks. I was applying to the same types of roles before with maybe 1–2 callbacks. The tailoring actually works."</div>
+          <div class="testimonial-author">
+            <div class="author-avatar" style="background:#b84c2a;">AK</div>
+            <div>
+              <div class="author-name">Aisha K.</div>
+              <div class="author-role">Software Engineer</div>
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Main */}
-      <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 24px 64px", animation: "fadeIn 0.5s 0.1s ease both" }}>
-        <div style={{ padding: "36px 0 0" }}>
-          <h2 style={{ margin: "0 0 8px", fontFamily: "'Playfair Display', serif", fontSize: "clamp(20px,3.5vw,26px)", fontWeight: 700, color: "#f0f0f0", letterSpacing: "-0.02em" }}>{tool.title}</h2>
-          <p style={{ margin: 0, color: "#666", fontSize: 14, lineHeight: 1.6, fontFamily: "'DM Mono', monospace" }}>{tool.description}</p>
-        </div>
-        <div style={{ height: 1, background: `linear-gradient(to right, ${tool.accent}44, transparent)`, margin: "24px 0 0" }} />
-        <Tool key={active} tool={tool} />
-        <div style={{ marginTop: 48, paddingTop: 24, borderTop: "1px solid #1a1a1a", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ color: "#333", fontSize: 12, fontFamily: "'DM Mono', monospace" }}>Career Toolkit v1.0</span>
-          <span style={{ color: "#333", fontSize: 12, fontFamily: "'DM Mono', monospace" }}>Powered by Claude AI</span>
+        <div class="testimonial-card reveal">
+          <div class="testimonial-stars">★★★★★</div>
+          <div class="testimonial-text">"As an HR manager, I now recommend this to every employee on my team before review season. The quality is genuinely impressive — it sounds human, not robotic."</div>
+          <div class="testimonial-author">
+            <div class="author-avatar" style="background:#c9a84c;">DL</div>
+            <div>
+              <div class="author-name">Diana L.</div>
+              <div class="author-role">HR Manager, Tech Company</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-  );
-}
+  </section>
 
-// ── LANDING PAGE ─────────────────────────────────────────────────────────────
-function LandingPage() {
-  useEffect(() => {
-    const els = document.querySelectorAll(".reveal");
-    const obs = new IntersectionObserver((entries) => {
-      entries.forEach((e, i) => {
-        if (e.isIntersecting) {
-          setTimeout(() => { e.target.style.opacity = 1; e.target.style.transform = "translateY(0)"; }, i * 80);
-          obs.unobserve(e.target);
+  <!-- FAQ -->
+  <section id="faq">
+    <div class="section-inner">
+      <div class="section-label">FAQ</div>
+      <h2 class="section-headline">Common questions</h2>
+
+      <div class="faq-grid reveal">
+        <div class="faq-item">
+          <div class="faq-q">What AI model does this use?</div>
+          <div class="faq-a">Career Toolkit is powered by Claude, built by Anthropic — widely regarded as one of the most capable and nuanced language models available. The output quality reflects that.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">Is my data stored or used for training?</div>
+          <div class="faq-a">No. Your inputs are processed in real-time and never stored, logged, or used to train any AI model. Your career data stays private.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">Does the output sound like me?</div>
+          <div class="faq-a">Yes — the AI adapts tone based on your input. The more context you give, the more personalized the output. Most users tweak less than 10% of the final text.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">What industries does it work for?</div>
+          <div class="faq-a">All of them. We've seen great results from tech, finance, marketing, healthcare, education, and more. The AI understands context and adjusts accordingly.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">Is this a one-time payment?</div>
+          <div class="faq-a">Yes. $19 is a lifetime license — no subscription, no renewals, no hidden fees. You also get all future updates and new tools added to the suite.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">What if I'm not happy with the output?</div>
+          <div class="faq-a">You can regenerate as many times as you want, and tweak your input to get different results. The tool gives you a starting point — you always have control.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <div class="section-inner" style="position:relative;z-index:1;">
+      <div class="section-label" style="justify-content:center;">Ready?</div>
+      <h2 class="section-headline">Your next career move<br />starts here</h2>
+      <p class="section-sub">Join professionals who've stopped winging their reviews and applications. One payment. Lifetime access.</p>
+      <div class="cta-actions">
+        <a href="#pricing" class="btn-gold">Get Lifetime Access — $19 →</a>
+        <a href="https://career-toolkit-brown.vercel.app/" class="btn-outline-light">Try it free first</a>
+      </div>
+      <div class="cta-guarantee">🔒 Secure payment &nbsp;·&nbsp; No subscription &nbsp;·&nbsp; Your data stays private</div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-logo">Career<span>Toolkit</span></div>
+    <div class="footer-links">
+      <a href="#">Privacy Policy</a>
+      <a href="#">Terms of Use</a>
+      <a href="#">Contact</a>
+    </div>
+    <div class="footer-copy">© 2026 CareerToolkit. Powered by Claude AI.</div>
+  </footer>
+
+  <script>
+    // Scroll reveal
+    const reveals = document.querySelectorAll('.reveal');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry, i) => {
+        if (entry.isIntersecting) {
+          setTimeout(() => entry.target.classList.add('visible'), i * 80);
+          observer.unobserve(entry.target);
         }
       });
     }, { threshold: 0.1 });
-    els.forEach(el => obs.observe(el));
-    return () => obs.disconnect();
-  }, []);
+    reveals.forEach(el => observer.observe(el));
 
-  const revealStyle = { opacity: 0, transform: "translateY(20px)", transition: "opacity 0.6s ease, transform 0.6s ease" };
-
-  return (
-    <div style={{ minHeight: "100vh", background: "#080808", fontFamily: "'DM Sans', sans-serif", color: "#e0e0e0", overflowX: "hidden" }}>
-
-      {/* NAV */}
-      <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "1.1rem 3rem", background: "rgba(8,8,8,0.92)", backdropFilter: "blur(12px)", borderBottom: "1px solid #1a1a1a" }}>
-        <span style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.1rem", fontWeight: 700, color: "#f0f0f0" }}>
-          Career<span style={{ color: "#C8F04A" }}>Toolkit</span>
-        </span>
-        <div style={{ display: "flex", gap: "2rem", alignItems: "center" }}>
-          {[["#tools", "Tools"], ["#how", "How It Works"], ["#pricing", "Pricing"]].map(([href, label]) => (
-            <a key={href} href={href} style={{ fontSize: "0.8rem", color: "#555", textDecoration: "none", letterSpacing: "0.06em", textTransform: "uppercase", fontFamily: "'DM Mono', monospace", transition: "color 0.2s" }}
-              onMouseEnter={e => e.target.style.color = "#e0e0e0"} onMouseLeave={e => e.target.style.color = "#555"}>{label}</a>
-          ))}
-          <button onClick={() => navigate("#/app")}
-            style={{ background: "#C8F04A", color: "#000", border: "none", padding: "0.55rem 1.3rem", borderRadius: 4, fontSize: "0.78rem", fontWeight: 700, fontFamily: "'DM Mono', monospace", letterSpacing: "0.06em", textTransform: "uppercase", cursor: "pointer", transition: "all 0.2s" }}
-            onMouseEnter={e => { e.target.style.background = "#d4f76a"; e.target.style.transform = "translateY(-1px)"; }}
-            onMouseLeave={e => { e.target.style.background = "#C8F04A"; e.target.style.transform = "none"; }}>
-            Get Access →
-          </button>
-        </div>
-      </nav>
-
-      {/* HERO */}
-      <section style={{ minHeight: "100vh", display: "flex", alignItems: "center", padding: "8rem 3rem 5rem", position: "relative", overflow: "hidden" }}>
-        {/* BG text */}
-        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", fontFamily: "'Playfair Display', serif", fontSize: "clamp(6rem,18vw,18rem)", fontWeight: 900, color: "transparent", WebkitTextStroke: "1px rgba(200,240,74,0.06)", whiteSpace: "nowrap", pointerEvents: "none", userSelect: "none" }}>CAREER</div>
-
-        <div style={{ maxWidth: 1100, margin: "0 auto", width: "100%", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4rem", alignItems: "center", position: "relative", zIndex: 1 }}>
-          {/* Left */}
-          <div>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", background: "#111", border: "1px solid #2a2a2a", padding: "0.3rem 0.8rem", borderRadius: 2, fontSize: "0.7rem", fontFamily: "'DM Mono', monospace", letterSpacing: "0.08em", textTransform: "uppercase", color: "#555", marginBottom: "1.5rem", animation: "fadeUp 0.6s ease both" }}>
-              <span style={{ width: 6, height: 6, background: "#C8F04A", borderRadius: "50%", display: "inline-block" }} />
-              Powered by Claude AI
-            </div>
-            <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(2.4rem,4.5vw,3.8rem)", fontWeight: 900, lineHeight: 1.08, letterSpacing: "-0.02em", marginBottom: "1.25rem", animation: "fadeUp 0.7s ease 0.1s both", color: "#f0f0f0" }}>
-              Write career docs that <em style={{ fontStyle: "italic", color: "#C8F04A" }}>actually</em> land the job
-            </h1>
-            <p style={{ fontSize: "1rem", color: "#555", lineHeight: 1.75, maxWidth: 440, marginBottom: "2.5rem", fontWeight: 300, animation: "fadeUp 0.7s ease 0.2s both" }}>
-              Stop staring at a blank page. Career Toolkit uses advanced AI to craft polished performance reviews and tailored job applications — in under 60 seconds.
-            </p>
-            <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap", animation: "fadeUp 0.7s ease 0.3s both" }}>
-              <button onClick={() => navigate("#/app")}
-                style={{ background: "#C8F04A", color: "#000", padding: "0.9rem 2rem", fontSize: "0.88rem", fontWeight: 700, fontFamily: "'DM Mono', monospace", letterSpacing: "0.06em", textTransform: "uppercase", border: "none", borderRadius: 4, cursor: "pointer", transition: "all 0.25s" }}
-                onMouseEnter={e => { e.target.style.background = "#d4f76a"; e.target.style.transform = "translateY(-2px)"; e.target.style.boxShadow = "0 8px 24px rgba(200,240,74,0.25)"; }}
-                onMouseLeave={e => { e.target.style.background = "#C8F04A"; e.target.style.transform = "none"; e.target.style.boxShadow = "none"; }}>
-                Try Free — No Signup →
-              </button>
-              <a href="#pricing" style={{ color: "#555", fontSize: "0.85rem", fontFamily: "'DM Mono', monospace", textDecoration: "none", letterSpacing: "0.04em", transition: "color 0.2s" }}
-                onMouseEnter={e => e.target.style.color = "#e0e0e0"} onMouseLeave={e => e.target.style.color = "#555"}>
-                See pricing ↓
-              </a>
-            </div>
-            <div style={{ marginTop: "2.5rem", display: "flex", alignItems: "center", gap: "1.5rem", fontSize: "0.78rem", color: "#444", fontFamily: "'DM Mono', monospace", animation: "fadeUp 0.7s ease 0.4s both" }}>
-              <span><span style={{ color: "#C8F04A" }}>2</span> tools in one</span>
-              <span style={{ width: 1, height: 20, background: "#2a2a2a", display: "inline-block" }} />
-              <span><span style={{ color: "#C8F04A" }}>Claude AI</span> quality</span>
-              <span style={{ width: 1, height: 20, background: "#2a2a2a", display: "inline-block" }} />
-              <span><span style={{ color: "#C8F04A" }}>$19</span> one-time</span>
-            </div>
-          </div>
-
-          {/* Right — preview card */}
-          <div style={{ background: "#0d0d0d", border: "1px solid #2a2a2a", borderRadius: 8, padding: "1.75rem", boxShadow: "0 20px 60px rgba(0,0,0,0.5)", animation: "fadeUp 0.8s ease 0.2s both", position: "relative" }}>
-            <div style={{ position: "absolute", top: 0, left: "2rem", right: "2rem", height: 2, background: "linear-gradient(90deg, #C8F04A, #4AF0C8, #C8F04A)", borderRadius: "0 0 2px 2px" }} />
-            <div style={{ fontSize: "0.65rem", fontFamily: "'DM Mono', monospace", color: "#C8F04A", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "0.6rem" }}>Performance Review Writer</div>
-            <div style={{ fontSize: "0.75rem", fontFamily: "'DM Mono', monospace", color: "#444", marginBottom: "0.75rem" }}>Your input</div>
-            <div style={{ background: "#080808", border: "1px solid #1a1a1a", borderRadius: 4, padding: "0.75rem", fontSize: "0.75rem", color: "#555", marginBottom: "0.75rem", lineHeight: 1.6, fontFamily: "'DM Mono', monospace" }}>
-              • Led product launch → +40% signups<br />• Mentored 2 junior devs<br />• Cut deployment time by 30%
-            </div>
-            <div style={{ textAlign: "center", padding: "0.4rem 0", fontSize: "0.7rem", color: "#333", fontFamily: "'DM Mono', monospace" }}>↓ Claude AI transforms this ↓</div>
-            <div style={{ background: "#111", border: "1px solid #C8F04A22", borderRadius: 4, padding: "0.9rem", fontSize: "0.75rem", color: "#aaa", lineHeight: 1.75, fontFamily: "'DM Mono', monospace" }}>
-              <div style={{ fontSize: "0.6rem", color: "#C8F04A", letterSpacing: "0.1em", marginBottom: "0.5rem", textTransform: "uppercase" }}>✦ AI Output</div>
-              This quarter, I drove measurable impact across delivery, growth, and team development. I spearheaded a product launch that accelerated user signups by 40%, while reducing deployment cycles by 30% through process improvements...
-            </div>
-            <div style={{ height: 1, background: "#1a1a1a", margin: "1.25rem 0" }} />
-            <div style={{ fontSize: "0.65rem", fontFamily: "'DM Mono', monospace", color: "#4AF0C8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "0.6rem" }}>Job Application Tailorer</div>
-            <div style={{ background: "#111", border: "1px solid #4AF0C822", borderRadius: 4, padding: "0.75rem", fontSize: "0.75rem", color: "#666", fontFamily: "'DM Mono', monospace", lineHeight: 1.6 }}>
-              Cover letter + resume summary tailored to the exact role — keywords matched, ATS-optimized, ready to send.
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* TRUST BAR */}
-      <div style={{ background: "#0a0a0a", borderTop: "1px solid #1a1a1a", borderBottom: "1px solid #1a1a1a", padding: "1.1rem 3rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "2.5rem", flexWrap: "wrap" }}>
-        {[["✦", "Claude AI — best-in-class model"], ["🔒", "Data never stored or sold"], ["⚡", "Results in 60 seconds"], ["♾️", "Lifetime access, one-time pay"], ["✓", "Any industry or role"]].map(([icon, text]) => (
-          <div key={text} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.75rem", color: "#444", fontFamily: "'DM Mono', monospace" }}>
-            <span style={{ color: "#C8F04A" }}>{icon}</span> {text}
-          </div>
-        ))}
-      </div>
-
-      {/* TOOLS */}
-      <section id="tools" style={{ padding: "5rem 3rem" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <div style={{ fontSize: "0.7rem", fontFamily: "'DM Mono', monospace", color: "#C8F04A", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "0.75rem" }}>The Suite</div>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(1.8rem,3vw,2.6rem)", fontWeight: 900, letterSpacing: "-0.02em", marginBottom: "1rem", color: "#f0f0f0" }}>Two tools. Both career-changing.</h2>
-          <p style={{ fontSize: "0.95rem", color: "#555", lineHeight: 1.7, fontWeight: 300, maxWidth: 500, marginBottom: "3rem" }}>Each tool targets a moment that matters — when you're being evaluated, and when you're trying to get in the door.</p>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.5rem" }}>
-            {[
-              { num: "01", icon: "📋", name: "Performance Review Writer", color: "#C8F04A", desc: "Turn raw bullet points into a polished, professional self-review. Sounds like you — but the best version.", features: ["Converts rough notes into confident narratives", "Highlights impact with the right tone", "Adaptable to any seniority or industry", "Saves 2–3 hours per review cycle"] },
-              { num: "02", icon: "📄", name: "Job Application Tailorer", color: "#4AF0C8", desc: "Paste a job description and your background. Get a tailored cover letter and resume summary that speaks the employer's language.", features: ["Matches your skills to the role's exact needs", "Cover letter that opens with a hook, not a template", "ATS-optimized resume summary", "Works for entry-level to executive"] },
-            ].map(tool => (
-              <div key={tool.num} className="reveal" style={{ ...revealStyle, background: "#0d0d0d", border: "1px solid #1a1a1a", borderRadius: 6, padding: "2rem", position: "relative", transition: "transform 0.3s, box-shadow 0.3s, opacity 0.6s ease, translate 0.6s ease" }}
-                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = `0 16px 40px rgba(0,0,0,0.4)`; e.currentTarget.style.borderColor = tool.color + "44"; }}
-                onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.borderColor = "#1a1a1a"; }}>
-                <div style={{ position: "absolute", top: "1.5rem", right: "1.5rem", fontFamily: "'Playfair Display', serif", fontSize: "3.5rem", fontWeight: 900, color: tool.color, opacity: 0.08, lineHeight: 1 }}>{tool.num}</div>
-                <div style={{ fontSize: "1.5rem", marginBottom: "1.25rem" }}>{tool.icon}</div>
-                <div style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.2rem", fontWeight: 700, marginBottom: "0.6rem", color: "#f0f0f0" }}>{tool.name}</div>
-                <div style={{ fontSize: "0.85rem", color: "#555", lineHeight: 1.7, fontWeight: 300, marginBottom: "1.25rem" }}>{tool.desc}</div>
-                <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "0.45rem" }}>
-                  {tool.features.map(f => (
-                    <li key={f} style={{ fontSize: "0.8rem", color: "#444", display: "flex", gap: "0.5rem", fontFamily: "'DM Mono', monospace" }}>
-                      <span style={{ color: tool.color }}>→</span> {f}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* HOW IT WORKS */}
-      <section id="how" style={{ padding: "5rem 3rem", background: "#0a0a0a" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <div style={{ fontSize: "0.7rem", fontFamily: "'DM Mono', monospace", color: "#C8F04A", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "0.75rem" }}>The Process</div>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(1.8rem,3vw,2.6rem)", fontWeight: 900, letterSpacing: "-0.02em", marginBottom: "1rem", color: "#f0f0f0" }}>From blank page to polished document</h2>
-          <p style={{ fontSize: "0.95rem", color: "#555", lineHeight: 1.7, fontWeight: 300, maxWidth: 480, marginBottom: "3rem" }}>No learning curve. No complicated settings. Three steps and you're done.</p>
-
-          <div className="reveal" style={{ ...revealStyle, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", border: "1px solid #1a1a1a", borderRadius: 6, overflow: "hidden" }}>
-            {[
-              ["1", "Paste your raw input", "Drop in bullet points, rough notes, a job description, or anything you have. No formatting needed."],
-              ["2", "Claude AI processes it", "Anthropic's top-tier AI transforms your input into professional, polished output in seconds."],
-              ["3", "Copy and use it", "One click to copy. Paste into your review system, email, or document. Edit if you want — it's yours."],
-            ].map(([num, title, desc], i) => (
-              <div key={num} style={{ padding: "2.5rem 2rem", borderRight: i < 2 ? "1px solid #1a1a1a" : "none" }}>
-                <div style={{ fontFamily: "'Playfair Display', serif", fontSize: "3rem", fontWeight: 900, color: "#C8F04A", opacity: 0.25, lineHeight: 1, marginBottom: "1rem" }}>{num}</div>
-                <div style={{ fontFamily: "'Playfair Display', serif", fontSize: "1rem", fontWeight: 700, color: "#f0f0f0", marginBottom: "0.5rem" }}>{title}</div>
-                <div style={{ fontSize: "0.82rem", color: "#555", lineHeight: 1.65, fontWeight: 300 }}>{desc}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* BEFORE / AFTER */}
-      <section style={{ padding: "5rem 3rem" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <div style={{ fontSize: "0.7rem", fontFamily: "'DM Mono', monospace", color: "#C8F04A", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "0.75rem" }}>The Difference</div>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(1.8rem,3vw,2.6rem)", fontWeight: 900, letterSpacing: "-0.02em", marginBottom: "1rem", color: "#f0f0f0" }}>See what AI quality actually looks like</h2>
-          <p style={{ fontSize: "0.95rem", color: "#555", lineHeight: 1.7, fontWeight: 300, maxWidth: 480, marginBottom: "2.5rem" }}>A real before/after from the Performance Review Writer. Same facts — completely different impact.</p>
-
-          <div className="reveal" style={{ ...revealStyle, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem" }}>
-            <div style={{ background: "#0d0d0d", border: "1px solid #1a1a1a", borderRadius: 6, padding: "2rem" }}>
-              <div style={{ fontSize: "0.68rem", fontFamily: "'DM Mono', monospace", color: "#333", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "1rem" }}>✕ Without Career Toolkit</div>
-              <p style={{ fontSize: "0.85rem", color: "#444", lineHeight: 1.75, fontWeight: 300, fontStyle: "italic" }}>"I did a good job this quarter. I helped with the product launch and it went well. I also helped some junior people on the team. I think I deserve a good rating."</p>
-            </div>
-            <div style={{ background: "#0d0d0d", border: "1px solid #C8F04A33", borderRadius: 6, padding: "2rem" }}>
-              <div style={{ fontSize: "0.68rem", fontFamily: "'DM Mono', monospace", color: "#C8F04A", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "1rem" }}>✦ With Career Toolkit</div>
-              <p style={{ fontSize: "0.85rem", color: "#aaa", lineHeight: 1.75, fontWeight: 300, fontStyle: "italic" }}>"This quarter, I drove measurable impact across three key areas. I led our flagship product launch, resulting in a 40% increase in new user signups. I invested in team capability by mentoring two junior engineers through their first production deployments."</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* PRICING */}
-      <section id="pricing" style={{ padding: "5rem 3rem", background: "#0a0a0a" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <div style={{ fontSize: "0.7rem", fontFamily: "'DM Mono', monospace", color: "#C8F04A", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "0.75rem" }}>Pricing</div>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(1.8rem,3vw,2.6rem)", fontWeight: 900, letterSpacing: "-0.02em", marginBottom: "1rem", color: "#f0f0f0" }}>One price. Lifetime access.</h2>
-          <p style={{ fontSize: "0.95rem", color: "#555", lineHeight: 1.7, fontWeight: 300, maxWidth: 480, marginBottom: "3rem" }}>No subscriptions. No monthly fees. Pay once, use it every review cycle and every job hunt — forever.</p>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1.25rem", alignItems: "start" }}>
-            {[
-              { tag: "Free", name: "Try It", price: "$0", period: "No credit card required", features: ["3 uses per tool", "Full AI quality", "No signup needed"], cta: "Try for Free", featured: false, onClick: () => navigate("#/app") },
-              { tag: "Most Popular", name: "Lifetime Access", price: "$19", period: "One-time payment · Use forever", features: ["Unlimited performance reviews", "Unlimited job applications", "Both tools included", "All future updates", "Powered by Claude AI", "Private & secure"], cta: "Get Lifetime Access →", featured: true, onClick: () => {} },
-              { tag: "Teams", name: "Team License", price: "$49", period: "One-time · Up to 5 seats", features: ["Everything in Lifetime", "5 team members", "Great for HR / managers", "Priority support"], cta: "Get Team License", featured: false, onClick: () => {} },
-            ].map(plan => (
-              <div key={plan.name} className="reveal" style={{ ...revealStyle, background: plan.featured ? "#C8F04A0d" : "#0d0d0d", border: `1px solid ${plan.featured ? "#C8F04A44" : "#1a1a1a"}`, borderRadius: 6, padding: "2rem", transform: plan.featured ? "scale(1.02)" : "none" }}>
-                <div style={{ display: "inline-block", fontSize: "0.62rem", fontFamily: "'DM Mono', monospace", fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase", padding: "0.3rem 0.7rem", borderRadius: 2, marginBottom: "1rem", background: plan.featured ? "#C8F04A" : "#111", color: plan.featured ? "#000" : "#444", border: plan.featured ? "none" : "1px solid #2a2a2a" }}>{plan.tag}</div>
-                <div style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.1rem", fontWeight: 700, color: "#f0f0f0", marginBottom: "0.4rem" }}>{plan.name}</div>
-                <div style={{ fontFamily: "'Playfair Display', serif", fontSize: "2.8rem", fontWeight: 900, letterSpacing: "-0.02em", color: plan.featured ? "#C8F04A" : "#f0f0f0", lineHeight: 1, marginBottom: "0.25rem" }}>{plan.price}</div>
-                <div style={{ fontSize: "0.75rem", color: "#444", fontFamily: "'DM Mono', monospace", marginBottom: "1.5rem" }}>{plan.period}</div>
-                <div style={{ height: 1, background: "#1a1a1a", marginBottom: "1.5rem" }} />
-                <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "0.55rem", marginBottom: "1.75rem" }}>
-                  {plan.features.map(f => (
-                    <li key={f} style={{ fontSize: "0.8rem", color: "#555", display: "flex", gap: "0.5rem", fontFamily: "'DM Mono', monospace" }}>
-                      <span style={{ color: "#C8F04A" }}>✓</span> {f}
-                    </li>
-                  ))}
-                </ul>
-                <button onClick={plan.onClick}
-                  style={{ display: "block", width: "100%", textAlign: "center", padding: "0.8rem", borderRadius: 4, fontSize: "0.8rem", fontWeight: 700, fontFamily: "'DM Mono', monospace", letterSpacing: "0.06em", textTransform: "uppercase", cursor: "pointer", border: "none", background: plan.featured ? "#C8F04A" : "#111", color: plan.featured ? "#000" : "#555", transition: "all 0.2s" }}
-                  onMouseEnter={e => { e.target.style.background = plan.featured ? "#d4f76a" : "#1a1a1a"; e.target.style.color = plan.featured ? "#000" : "#e0e0e0"; }}
-                  onMouseLeave={e => { e.target.style.background = plan.featured ? "#C8F04A" : "#111"; e.target.style.color = plan.featured ? "#000" : "#555"; }}>
-                  {plan.cta}
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section style={{ padding: "5rem 3rem" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <div style={{ fontSize: "0.7rem", fontFamily: "'DM Mono', monospace", color: "#C8F04A", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "0.75rem" }}>FAQ</div>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(1.8rem,3vw,2.6rem)", fontWeight: 900, letterSpacing: "-0.02em", marginBottom: "2.5rem", color: "#f0f0f0" }}>Common questions</h2>
-
-          <div className="reveal" style={{ ...revealStyle, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", border: "1px solid #1a1a1a", borderRadius: 6, overflow: "hidden" }}>
-            {[
-              ["What AI model does this use?", "Career Toolkit is powered by Claude, built by Anthropic — one of the most capable language models available. The output quality reflects that."],
-              ["Is my data stored or used for training?", "No. Your inputs are processed in real-time and never stored, logged, or used to train any AI model. Your career data stays private."],
-              ["Does the output sound like me?", "Yes — the AI adapts tone based on your input. The more context you give, the more personalized the output. Most users tweak less than 10%."],
-              ["What industries does it work for?", "All of them. Tech, finance, marketing, healthcare, education, and more. The AI understands context and adjusts accordingly."],
-              ["Is this a one-time payment?", "$19 is a lifetime license — no subscription, no renewals. You also get all future updates and new tools added to the suite."],
-              ["What if I'm not happy with the output?", "Regenerate as many times as you want and tweak your input to get different results. You always have full control over the final text."],
-            ].map(([q, a], i) => (
-              <div key={q} style={{ padding: "2rem", borderBottom: i < 4 ? "1px solid #1a1a1a" : "none", borderRight: i % 2 === 0 ? "1px solid #1a1a1a" : "none" }}>
-                <div style={{ fontFamily: "'Playfair Display', serif", fontSize: "0.9rem", fontWeight: 700, color: "#f0f0f0", marginBottom: "0.5rem" }}>{q}</div>
-                <div style={{ fontSize: "0.82rem", color: "#555", lineHeight: 1.7, fontWeight: 300 }}>{a}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* FINAL CTA */}
-      <section style={{ padding: "6rem 3rem", background: "#0a0a0a", textAlign: "center", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", fontFamily: "'Playfair Display', serif", fontSize: "clamp(6rem,18vw,18rem)", fontWeight: 900, color: "transparent", WebkitTextStroke: "1px rgba(200,240,74,0.04)", pointerEvents: "none", whiteSpace: "nowrap" }}>HIRED</div>
-        <div style={{ position: "relative", zIndex: 1 }}>
-          <div style={{ fontSize: "0.7rem", fontFamily: "'DM Mono', monospace", color: "#C8F04A", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "0.75rem" }}>Ready?</div>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(2rem,4vw,3.2rem)", fontWeight: 900, letterSpacing: "-0.02em", color: "#f0f0f0", marginBottom: "1rem" }}>Your next career move starts here</h2>
-          <p style={{ fontSize: "0.95rem", color: "#555", lineHeight: 1.7, fontWeight: 300, maxWidth: 420, margin: "0 auto 2.5rem" }}>Join professionals who've stopped winging their reviews and applications. One payment. Lifetime access.</p>
-          <div style={{ display: "flex", gap: "1rem", alignItems: "center", justifyContent: "center", flexWrap: "wrap" }}>
-            <button onClick={() => navigate("#/app")}
-              style={{ background: "#C8F04A", color: "#000", padding: "0.95rem 2.2rem", fontSize: "0.88rem", fontWeight: 700, fontFamily: "'DM Mono', monospace", letterSpacing: "0.06em", textTransform: "uppercase", border: "none", borderRadius: 4, cursor: "pointer", transition: "all 0.25s" }}
-              onMouseEnter={e => { e.target.style.background = "#d4f76a"; e.target.style.transform = "translateY(-2px)"; e.target.style.boxShadow = "0 8px 24px rgba(200,240,74,0.25)"; }}
-              onMouseLeave={e => { e.target.style.background = "#C8F04A"; e.target.style.transform = "none"; e.target.style.boxShadow = "none"; }}>
-              Try Free — No Signup →
-            </button>
-            <button onClick={() => { document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" }); }}
-              style={{ background: "transparent", color: "#444", padding: "0.95rem 2.2rem", fontSize: "0.88rem", fontFamily: "'DM Mono', monospace", letterSpacing: "0.06em", textTransform: "uppercase", border: "1px solid #2a2a2a", borderRadius: 4, cursor: "pointer", transition: "all 0.25s" }}
-              onMouseEnter={e => { e.target.style.borderColor = "#555"; e.target.style.color = "#e0e0e0"; }}
-              onMouseLeave={e => { e.target.style.borderColor = "#2a2a2a"; e.target.style.color = "#444"; }}>
-              Get Lifetime — $19
-            </button>
-          </div>
-          <div style={{ marginTop: "1.75rem", fontSize: "0.72rem", color: "#333", fontFamily: "'DM Mono', monospace" }}>🔒 Secure payment &nbsp;·&nbsp; No subscription &nbsp;·&nbsp; Your data stays private</div>
-        </div>
-      </section>
-
-      {/* FOOTER */}
-      <footer style={{ background: "#050505", padding: "2.5rem 3rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem", borderTop: "1px solid #1a1a1a" }}>
-        <span style={{ fontFamily: "'Playfair Display', serif", fontSize: "1rem", fontWeight: 700, color: "#333" }}>Career<span style={{ color: "#C8F04A" }}>Toolkit</span></span>
-        <div style={{ display: "flex", gap: "2rem" }}>
-          {["Privacy Policy", "Terms of Use", "Contact"].map(l => (
-            <a key={l} href="#" style={{ fontSize: "0.75rem", color: "#333", textDecoration: "none", fontFamily: "'DM Mono', monospace", transition: "color 0.2s" }}
-              onMouseEnter={e => e.target.style.color = "#555"} onMouseLeave={e => e.target.style.color = "#333"}>{l}</a>
-          ))}
-        </div>
-        <span style={{ fontSize: "0.72rem", color: "#222", fontFamily: "'DM Mono', monospace" }}>© 2026 CareerToolkit · Powered by Claude AI</span>
-      </footer>
-    </div>
-  );
-}
-
-// ── ROOT ─────────────────────────────────────────────────────────────────────
-export default function App() {
-  const route = useRoute();
-
-  return (
-    <>
-      <style>{GLOBAL_STYLES}</style>
-      {route === "#/app" ? <AppPage /> : <LandingPage />}
-    </>
-  );
-}
+    // Smooth nav highlight
+    const sections = document.querySelectorAll('section[id]');
+    const navLinks = document.querySelectorAll('nav ul a[href^="#"]');
+    window.addEventListener('scroll', () => {
+      let current = '';
+      sections.forEach(s => {
+        if (window.scrollY >= s.offsetTop - 120) current = s.id;
+      });
+      navLinks.forEach(a => {
+        a.style.color = a.getAttribute('href') === '#' + current ? 'var(--ink)' : '';
+      });
+    });
+  </script>
+</body>
+</html>
