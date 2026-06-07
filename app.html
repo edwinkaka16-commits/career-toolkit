@@ -61,10 +61,10 @@
     <div class="paywall-icon">🔒</div>
     <div class="paywall-title">Your free trial has ended</div>
     <div class="paywall-sub">
-      You've used your <strong>3 free generations</strong>.<br><br>
+      You've used your <strong>1 free trial</strong>.<br><br>
       Get <strong>unlimited access</strong> to both tools forever. One payment, no subscription, no renewals.
     </div>
-    <a href="YOUR_LEMON_SQUEEZY_LINK" class="paywall-btn" id="paywall-buy-btn">
+    <a href="YOUR_SELAR_LINK_HERE" class="paywall-btn" id="paywall-buy-btn">
       Get Lifetime Access — $19 →
     </a>
     <div class="paywall-back" onclick="window.location.href='/'">← Back to homepage</div>
@@ -76,7 +76,7 @@
     <p>AI-Powered</p>
     <h1>Career Toolkit</h1>
   </div>
-  <div class="usage-badge">Free uses left: <span id="uses-left">3</span> / 3</div>
+  <div class="usage-badge">Free uses left: <span id="uses-left">1</span> / 1</div>
 </div>
 
 <div class="tabs">
@@ -142,9 +142,9 @@ Example:
 </div>
 
 <script>
-const FREE_LIMIT = 3;
+const FREE_LIMIT = 1;
 const STORAGE_KEY = 'ct_uses';
-const LEMON_URL = 'YOUR_LEMON_SQUEEZY_LINK';
+const SELAR_URL = 'YOUR_SELAR_LINK_HERE';
 
 function getUses() { return parseInt(localStorage.getItem(STORAGE_KEY) || '0'); }
 function incrementUses() { localStorage.setItem(STORAGE_KEY, getUses() + 1); }
@@ -154,23 +154,21 @@ function updateBadge() {
   const left = getRemaining();
   const el = document.getElementById('uses-left');
   el.textContent = left;
-  el.style.color = left === 0 ? '#ff6b6b' : left === 1 ? '#ffaa00' : '#C8F04A';
+  el.style.color = left === 0 ? '#ff6b6b' : '#C8F04A';
 }
 
 function showWarning(tool) {
   const left = getRemaining();
   const el = document.getElementById(tool + '-warning');
   if (left === 1) {
-    el.innerHTML = '<div class="trial-warning last">⚠️ This is your last free use! Upgrade after this to keep going.</div>';
-  } else if (left === 2) {
-    el.innerHTML = '<div class="trial-warning">You have ' + left + ' free uses left. <a href="' + LEMON_URL + '" style="color:#C8F04A;">Upgrade for unlimited access →</a></div>';
+    el.innerHTML = '<div class="trial-warning last">⚠️ This is your only free trial. Upgrade after this to keep going.</div>';
   } else {
     el.innerHTML = '';
   }
 }
 
 function showPaywall() {
-  document.getElementById('paywall-buy-btn').href = LEMON_URL;
+  document.getElementById('paywall-buy-btn').href = SELAR_URL;
   document.getElementById('paywall').classList.add('show');
 }
 
