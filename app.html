@@ -19,6 +19,31 @@
   .main { max-width: 720px; margin: 0 auto; padding: 36px 24px 64px; }
   h2 { font-size: 24px; font-weight: 400; color: #f0f0f0; margin-bottom: 8px; }
   .desc { color: #666; font-size: 14px; font-family: monospace; margin-bottom: 24px; }
+
+  /* Input tip box */
+  .input-tip {
+    background: #0d1a0d;
+    border: 1px solid #1e3a1e;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    font-size: 12px;
+    font-family: monospace;
+    color: #6a9a6a;
+    line-height: 1.6;
+  }
+  .input-tip.job {
+    background: #0a1a1a;
+    border-color: #1e3a3a;
+    color: #4a8a8a;
+  }
+  .input-tip strong {
+    color: #C8F04A;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .input-tip.job strong { color: #4AF0C8; }
+
   textarea { width: 100%; background: #0d0d0d; border: 1px solid #2a2a2a; border-radius: 10px; color: #ccc; font-size: 14px; line-height: 1.7; padding: 16px; resize: vertical; font-family: monospace; outline: none; }
   textarea:focus { border-color: #C8F04A; }
   textarea.job:focus { border-color: #4AF0C8; }
@@ -31,6 +56,17 @@
   .output-label.job { color: #4AF0C8; }
   .copy-btn { background: transparent; color: #888; border: 1px solid #333; border-radius: 6px; padding: 4px 12px; font-size: 11px; cursor: pointer; font-family: monospace; }
   .copy-btn:hover { background: #C8F04A; color: #000; border-color: #C8F04A; }
+
+  /* Output reminder */
+  .output-reminder {
+    padding: 10px 20px;
+    background: #0d0d0d;
+    border-bottom: 1px solid #1a1a1a;
+    font-size: 11px;
+    font-family: monospace;
+    color: #555;
+  }
+
   pre { padding: 20px; white-space: pre-wrap; word-break: break-word; color: #e0e0e0; font-size: 14px; line-height: 1.75; font-family: monospace; max-height: 460px; overflow-y: auto; }
   .loading { text-align: center; padding: 48px 0; color: #666; font-family: monospace; font-size: 13px; letter-spacing: 0.1em; }
   .error { color: #ff6b6b; margin-top: 16px; font-size: 14px; }
@@ -85,58 +121,91 @@
 </div>
 
 <div class="main">
+
+  <!-- TOOL 01: PERFORMANCE REVIEW -->
   <div id="tool-review">
     <h2>Performance Review Writer</h2>
-    <p class="desc">Turn bullet points into a polished self-review</p>
+    <p class="desc">Turn rough bullet points into a polished self-review in under 60 seconds</p>
     <div class="divider"></div><br>
     <div id="review-warning"></div>
+
+    <!-- Input tip -->
+    <div class="input-tip">
+      <strong>💡 Better input = better output</strong>
+      Include: what you did, who it affected, and any numbers you remember (%, time saved, revenue, team size). Don't worry about grammar — rough notes work perfectly.
+    </div>
+
     <label style="color:#888;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;font-family:monospace;">Your Work Highlights</label><br><br>
-    <textarea id="review-input" rows="10" placeholder="Paste your work highlights here. Be rough — bullet points are fine.
+    <textarea id="review-input" rows="10" placeholder="List what you accomplished this period. Rough notes are fine.
 
 Example:
 - Led migration of billing system, cut errors by 40%
-- Mentored 2 junior devs
+- Mentored 2 junior developers, both got promoted
 - Shipped 3 features ahead of schedule
-- Improved customer response time from 48h to 6h"></textarea>
+- Improved customer response time from 48h to 6h
+- Presented quarterly results to senior leadership
+- Took over a failing project and delivered it on time
+
+The more detail you give, the stronger your review will be."></textarea>
     <br>
-    <button class="btn" onclick="generate('review')">Write My Review</button>
-    <div id="review-loading" class="loading" style="display:none">Generating…</div>
+    <button class="btn" onclick="generate('review')">Write My Review →</button>
+    <div id="review-loading" class="loading" style="display:none">Generating your review…</div>
     <div id="review-error" class="error"></div>
     <div id="review-output" class="output-box" style="display:none">
       <div class="output-header">
-        <span class="output-label">Output</span>
+        <span class="output-label">Your Performance Review</span>
         <button class="copy-btn" onclick="copyOutput('review')">Copy</button>
       </div>
+      <div class="output-reminder">✏️ Review and personalize before submitting — this is your starting point, not the final draft.</div>
       <pre id="review-text"></pre>
     </div>
   </div>
 
+  <!-- TOOL 02: JOB APPLICATION -->
   <div id="tool-job">
     <h2>Job Application Tailorer</h2>
     <p class="desc">Paste a job description + your background → cover letter & resume summary</p>
     <div class="divider job"></div><br>
     <div id="job-warning"></div>
+
+    <!-- Input tip -->
+    <div class="input-tip job">
+      <strong>💡 Better input = better output</strong>
+      Paste the full job description AND your background. The more context you give about your experience, skills, and achievements — the more tailored and convincing your application will be.
+    </div>
+
     <label style="color:#888;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;font-family:monospace;">Job Description + Your Background</label><br><br>
-    <textarea id="job-input" class="job" rows="10" placeholder="--- JOB DESCRIPTION ---
-[paste job description here]
+    <textarea id="job-input" class="job" rows="12" placeholder="--- JOB DESCRIPTION ---
+Paste the full job posting here (title, responsibilities, requirements)
 
 --- MY BACKGROUND ---
-[paste your resume summary or bullet points here]"></textarea>
+Paste your resume summary or bullet points here. Include:
+- Your current/recent role and years of experience
+- Key skills relevant to this job
+- Notable achievements (with numbers if possible)
+- Why you want this specific role
+
+Example background:
+- 4 years as a Financial Analyst at ABC Corp
+- Built financial models that saved $200K annually
+- Strong Excel, SQL, and data visualization skills
+- Looking to move into a senior strategy role"></textarea>
     <br>
-    <button class="btn job" onclick="generate('job')">Tailor My Application</button>
-    <div id="job-loading" class="loading" style="display:none">Generating…</div>
+    <button class="btn job" onclick="generate('job')">Tailor My Application →</button>
+    <div id="job-loading" class="loading" style="display:none">Tailoring your application…</div>
     <div id="job-error" class="error"></div>
     <div id="job-output" class="output-box" style="display:none">
       <div class="output-header">
-        <span class="output-label job">Output</span>
+        <span class="output-label job">Your Tailored Application</span>
         <button class="copy-btn" onclick="copyOutput('job')">Copy</button>
       </div>
+      <div class="output-reminder">✏️ Personalize before sending — add your name, contact details, and any specific details the AI couldn't know.</div>
       <pre id="job-text"></pre>
     </div>
   </div>
 
   <div class="footer">
-    <span>Career Toolkit v1.0</span>
+    <span>Career Toolkit v1.1</span>
     <span>Powered by Claude AI</span>
   </div>
 </div>
